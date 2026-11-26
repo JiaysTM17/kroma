@@ -212,14 +212,14 @@ npm install
 # Kiểm tra bản đóng gói sản phẩm
 npm run build
 
-# Chạy máy chủ giao diện tại cổng 3000
+# Chạy máy chủ giao diện tại cổng 3005
 npm run dev
 ```
 
 Mở trình duyệt truy cập:
-- Studio Image Suite: `http://localhost:3000`
+- Studio Image Suite: `http://localhost:3005`
 - API Swagger Docs: `http://localhost:8000/docs`
-- Cổng duyệt khách hàng (Proofing): `http://localhost:3000/proof/demo`
+- Cổng duyệt khách hàng (Proofing): `http://localhost:3005/proof/demo`
 
 ---
 

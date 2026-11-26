@@ -18,7 +18,12 @@ class Settings(BaseSettings):
     app_name: str = "KROMA API"
     app_version: str = "0.1.0"
     environment: Literal["local", "staging", "production"] = "local"
-    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3005",
+        "http://127.0.0.1:3005",
+    ]
 
     database_backend: Literal["sqlite", "postgres"] = "sqlite"
     sqlite_path: Path = BACKEND_DIR / "data" / "kroma.db"
