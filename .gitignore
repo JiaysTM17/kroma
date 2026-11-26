@@ -19,9 +19,60 @@ Desktop.ini
 *.swo
 *~
 
-# Python cache (if any scripts run)
+# Environment secrets (keep templates tracked)
+.env
+.env.*
+!.env.example
+
+# Node / Next.js (frontend/)
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+out/
+frontend/out/
+dist/
+build/
+.turbo/
+.vercel/
+*.tsbuildinfo
+frontend/next-env.d.ts
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Python / FastAPI (backend/)
 __pycache__/
 *.py[cod]
 *$py.class
 .venv/
 venv/
+backend/.venv/
+.pytest_cache/
+backend/.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+.eggs/
+
+# Local SQLite & local blob storage (never commit runtime data)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+backend/data/
+data/
+
+# Playwright / E2E / JS test reports & artifacts
+tests/e2e/test-results/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+coverage/
