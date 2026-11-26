@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- App Badge Background / Gradient -->
+    <linearGradient id="badge-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+
+    <linearGradient id="k-stem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+
+    <linearGradient id="k-arm-top" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#A855F7" />
+      <stop offset="100%" stop-color="#F43F5E" />
+    </linearGradient>
+
+    <linearGradient id="k-arm-bottom" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="50%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+
+    <linearGradient id="k-prism-core" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E" />
+      <stop offset="50%" stop-color="#FB923C" />
+      <stop offset="100%" stop-color="#FACC15" />
+    </linearGradient>
+
+    <filter id="badge-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.18" />
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#4F46E5" flood-opacity="0.12" />
+    </filter>
+  </defs>
+
+  <!-- Canvas is Pure White -->
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+
+  <!-- Premium Squircle App Badge -->
+  <rect x="56" y="56" width="400" height="400" rx="90" ry="90" 
+        fill="url(#badge-bg)" 
+        filter="url(#badge-shadow)" />
+
+  <!-- Subtle Rim Light on Badge Border -->
+  <rect x="56" y="56" width="400" height="400" rx="90" ry="90" 
+        fill="none" 
+        stroke="#334155" 
+        stroke-width="2" />
+
+  <!-- Centered Chromatic K Symbol -->
+  <g transform="translate(166, 140)">
+    <!-- Vertical Pillar -->
+    <path d="M 28 18 C 28 8.05 36.05 0 46 0 L 60 0 C 69.95 0 78 8.05 78 18 L 78 162 C 78 171.95 69.95 180 60 180 L 46 180 C 36.05 180 28 171.95 28 162 Z" 
+          fill="url(#k-stem)" />
+
+    <!-- Upper Beam -->
+    <path d="M 83 83 C 81 79 84 72 90 69 L 158 25 C 166 20 176 26 176 35 L 176 50 C 176 56 172 63 165 68 L 106 106 C 98 110 88 106 85 97 Z" 
+          fill="url(#k-arm-top)" />
+
+    <!-- Lower Beam -->
+    <path d="M 85 86 C 88 77 98 72 106 77 L 165 115 C 172 120 176 126 176 133 L 176 148 C 176 157 166 162 158 158 L 90 114 C 84 110 81 104 83 99 Z" 
+          fill="url(#k-arm-bottom)" />
+
+    <!-- Chromatic Prism Core -->
+    <path d="M 78 70 L 110 91 L 78 112 Z" 
+          fill="url(#k-prism-core)" 
+          opacity="0.95" />
+
+    <!-- Core Focal Point -->
+    <circle cx="110" cy="91" r="6" fill="#FFFFFF" opacity="0.95" />
+  </g>
+</svg>
