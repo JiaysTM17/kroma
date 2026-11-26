@@ -51,9 +51,40 @@ export interface AdjustmentValues {
   sharpness: number;    // 0 to 100
 }
 
+export type PromoBadgeType =
+  | 'none'
+  | 'flash_sale'
+  | 'freeship'
+  | 'mall'
+  | 'top_deal'
+  | 'discount_50';
+
+export interface PromoBadgeConfig {
+  enabled: boolean;
+  type: PromoBadgeType;
+  position: 'top_left' | 'top_right' | 'bottom_left' | 'bottom_right';
+  customText?: string;
+}
+
+export interface WatermarkConfig {
+  enabled: boolean;
+  text: string;
+  opacity: number;      // 0.0 to 1.0
+  position: 'bottom_right' | 'bottom_left' | 'center' | 'diagonal_repeat';
+  color: string;
+  fontSize: number;
+}
+
+export interface TransformState {
+  offsetX: number;      // px offset from centered
+  offsetY: number;
+  scale: number;        // 0.5 to 2.0
+}
+
 export interface ImageAsset {
   id: string;
   name: string;
+  category?: string;
   originalUrl: string;
   maskUrl?: string;
   processedUrl?: string;
@@ -61,6 +92,7 @@ export interface ImageAsset {
   height: number;
   sizeBytes: number;
   hasBackgroundRemoved: boolean;
+  isSample?: boolean;
 }
 
 export interface ProofingComment {

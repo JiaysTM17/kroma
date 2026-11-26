@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%">
+  <defs>
+    <linearGradient id="leather-brown" x1="0%" y1="0%" x2="100%" y2="80%">
+      <stop offset="0%" stop-color="#9A3412" />
+      <stop offset="35%" stop-color="#C2410C" />
+      <stop offset="70%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#7C2D12" />
+    </linearGradient>
+    <linearGradient id="bag-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF08A" />
+      <stop offset="50%" stop-color="#EAB308" />
+      <stop offset="100%" stop-color="#854D0E" />
+    </linearGradient>
+    <filter id="bag-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="18" stdDeviation="15" flood-color="#431407" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <g transform="translate(250, 150)" filter="url(#bag-shadow)">
+    <!-- Leather Handle (Arched Top) -->
+    <path d="M 180 340 C 180 100 320 100 320 340" fill="none" stroke="#7C2D12" stroke-width="26" stroke-linecap="round" />
+    <path d="M 180 340 C 180 110 320 110 320 340" fill="none" stroke="#C2410C" stroke-width="18" stroke-linecap="round" />
+
+    <!-- Handle Gold Buckles -->
+    <rect x="165" y="325" width="30" height="25" rx="5" fill="url(#bag-gold)" />
+    <rect x="305" y="325" width="30" height="25" rx="5" fill="url(#bag-gold)" />
+
+    <!-- Handbag Main Trapezoid Body -->
+    <path d="M 110 330 L 390 330 C 440 330 460 380 470 650 C 475 700 440 730 380 730 L 120 730 C 60 730 25 700 30 650 C 40 380 60 330 110 330 Z" fill="url(#leather-brown)" />
+
+    <!-- Leather Flap / Closure -->
+    <path d="M 140 330 L 360 330 L 340 500 C 340 540 310 560 250 560 C 190 560 160 540 160 500 Z" fill="#7C2D12" />
+    <path d="M 150 330 L 350 330 L 330 490 C 330 525 305 545 250 545 C 195 545 170 525 170 490 Z" fill="#9A3412" />
+
+    <!-- Gold Metallic Turn-Lock Clasp -->
+    <circle cx="250" cy="510" r="18" fill="url(#bag-gold)" stroke="#78350F" stroke-width="2" />
+    <rect x="245" y="498" width="10" height="24" rx="2" fill="#451A03" />
+
+    <!-- Precision Perimeter Contrast Stitching -->
+    <path d="M 115 345 L 385 345 C 425 345 445 390 455 640 C 460 685 430 715 375 715 L 125 715 C 70 715 40 685 45 640 C 55 390 75 345 115 345 Z" fill="none" stroke="#FDE047" stroke-width="2" stroke-dasharray="5,5" opacity="0.75" />
+
+    <!-- Hanging Gold Brand Tag Charm -->
+    <line x1="315" y1="350" x2="350" y2="450" stroke="#78350F" stroke-width="3" />
+    <polygon points="340,450 365,450 360,500 345,500" fill="url(#bag-gold)" stroke="#78350F" stroke-width="1" />
+  </g>
+</svg>

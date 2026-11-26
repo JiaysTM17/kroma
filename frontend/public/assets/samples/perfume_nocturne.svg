@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%">
+  <defs>
+    <linearGradient id="gold-cap" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="35%" stop-color="#CA8A04" />
+      <stop offset="70%" stop-color="#EAB308" />
+      <stop offset="100%" stop-color="#854D0E" />
+    </linearGradient>
+    <linearGradient id="glass-body" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F8FAFC" stop-opacity="0.9" />
+      <stop offset="15%" stop-color="#FFFFFF" stop-opacity="0.3" />
+      <stop offset="85%" stop-color="#CBD5E1" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#E2E8F0" stop-opacity="0.8" />
+    </linearGradient>
+    <linearGradient id="amber-liquid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.85" />
+      <stop offset="60%" stop-color="#D97706" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#B45309" stop-opacity="0.95" />
+    </linearGradient>
+    <filter id="perfume-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#78350F" flood-opacity="0.22" />
+    </filter>
+  </defs>
+
+  <g transform="translate(300, 160)" filter="url(#perfume-glow)">
+    <!-- Heavy Solid Glass Base -->
+    <rect x="50" y="550" width="300" height="70" rx="8" fill="#E2E8F0" opacity="0.9" />
+    <rect x="60" y="560" width="280" height="50" rx="4" fill="#F8FAFC" opacity="0.7" />
+
+    <!-- Glass Bottle Outer Wall -->
+    <rect x="50" y="240" width="300" height="380" rx="20" fill="url(#glass-body)" stroke="#94A3B8" stroke-width="3" />
+
+    <!-- Amber Fragrance Liquid Inside -->
+    <rect x="75" y="320" width="250" height="250" rx="12" fill="url(#amber-liquid)" />
+    
+    <!-- Liquid Surface Meniscus & Bubble reflections -->
+    <ellipse cx="200" cy="320" rx="125" ry="8" fill="#FDE68A" opacity="0.6" />
+    <circle cx="120" cy="400" r="14" fill="#FFFFFF" opacity="0.2" />
+    <circle cx="280" cy="480" r="10" fill="#FFFFFF" opacity="0.15" />
+
+    <!-- Minimalist Typography Brand Label -->
+    <rect x="90" y="380" width="220" height="130" rx="4" fill="#FFFFFF" opacity="0.95" stroke="#E2E8F0" stroke-width="1" />
+    <text x="200" y="420" font-family="'Times New Roman', serif" font-size="20" font-weight="bold" letter-spacing="4" fill="#0F172A" text-anchor="middle">
+      KROMA
+    </text>
+    <text x="200" y="445" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600" letter-spacing="3" fill="#64748B" text-anchor="middle">
+      EAU DE PARFUM
+    </text>
+    <line x1="140" y1="460" x2="260" y2="460" stroke="#CA8A04" stroke-width="1" />
+    <text x="200" y="485" font-family="monospace" font-size="9" letter-spacing="2" fill="#94A3B8" text-anchor="middle">
+      100 ML • 3.4 FL.OZ.
+    </text>
+
+    <!-- Glass Specular Highlight Strips -->
+    <path d="M 65 260 L 65 600" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.75" />
+    <path d="M 85 270 L 85 590" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.4" />
+    <path d="M 335 260 L 335 600" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.4" />
+
+    <!-- Sprayer Neck & Collar -->
+    <rect x="160" y="195" width="80" height="45" rx="3" fill="url(#gold-cap)" stroke="#92400E" stroke-width="1" />
+    <!-- Atomizer Spray Tube inside liquid -->
+    <line x1="200" y1="240" x2="200" y2="560" stroke="#FFFFFF" stroke-width="3" opacity="0.5" />
+
+    <!-- Magnetic Metallic Gold Cap -->
+    <rect x="135" y="70" width="130" height="125" rx="10" fill="url(#gold-cap)" stroke="#92400E" stroke-width="1.5" />
+    <rect x="145" y="80" width="110" height="105" rx="6" fill="url(#gold-cap)" />
+    <!-- Gold Cap Specular Highlight -->
+    <path d="M 155 85 L 155 180" stroke="#FEF08A" stroke-width="6" stroke-linecap="round" opacity="0.8" />
+  </g>
+</svg>

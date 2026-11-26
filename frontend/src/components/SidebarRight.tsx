@@ -3,21 +3,25 @@
 import React, { useState } from 'react';
 import {
   Sparkles,
-  Sliders,
-  Layers,
   Wand2,
   Paintbrush,
   RotateCcw,
   CheckCircle2,
-  ShieldAlert,
+  Tag,
+  Sliders,
+  Type,
+  Maximize,
 } from 'lucide-react';
 import {
   AdjustmentValues,
   ImageAsset,
-  MarketplaceId,
   MarketplacePreset,
+  PromoBadgeConfig,
+  PromoBadgeType,
   ShadowConfig,
   ShadowType,
+  TransformState,
+  WatermarkConfig,
 } from '@/lib/types';
 import { MARKETPLACE_PRESETS } from '@/lib/presets';
 import { Language, translations } from '@/lib/i18n';
@@ -28,16 +32,23 @@ interface SidebarRightProps {
   selectedPreset: MarketplacePreset;
   shadow: ShadowConfig;
   adjustments: AdjustmentValues;
+  promoBadge: PromoBadgeConfig;
+  watermark: WatermarkConfig;
+  transform: TransformState;
   isRemovingBg: boolean;
   isBrushActive: boolean;
   brushSize: number;
   onSelectPreset: (preset: MarketplacePreset) => void;
+  onAutoFrameAmazon: () => void;
   onRemoveBackground: () => void;
   onRestoreOriginal: () => void;
   onToggleBrush: () => void;
   onBrushSizeChange: (size: number) => void;
   onShadowChange: (shadow: ShadowConfig) => void;
   onAdjustmentsChange: (adjustments: AdjustmentValues) => void;
+  onPromoBadgeChange: (badge: PromoBadgeConfig) => void;
+  onWatermarkChange: (watermark: WatermarkConfig) => void;
+  onTransformChange: (transform: TransformState) => void;
 }
 
 export const SidebarRight: React.FC<SidebarRightProps> = ({
@@ -46,29 +57,36 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
   selectedPreset,
   shadow,
   adjustments,
+  promoBadge,
+  watermark,
+  transform,
   isRemovingBg,
   isBrushActive,
   brushSize,
   onSelectPreset,
+  onAutoFrameAmazon,
   onRemoveBackground,
   onRestoreOriginal,
   onToggleBrush,
   onBrushSizeChange,
   onShadowChange,
   onAdjustmentsChange,
+  onPromoBadgeChange,
+  onWatermarkChange,
+  onTransformChange,
 }) => {
   const t = translations[lang];
-  const [activeTab, setActiveTab] = useState<'presets' | 'cutout' | 'shadow' | 'adjust'>('presets');
+  const [activeTab, setActiveTab] = useState<'presets' | 'cutout' | 'shadow' | 'badges' | 'adjust'>('presets');
 
   return (
-    <aside className="w-80 border-l border-surface-border bg-surface-light flex flex-col h-[calc(100vh-3.5rem)] select-none">
-      {/* Tab Navigation */}
-      <div className="grid grid-cols-4 border-b border-surface-border bg-surface-subtle text-xs">
+    <aside className="w-84 border-l border-surface-border bg-surface-light flex flex-col h-[calc(100vh-3.5rem)] select-none">
+      {/* 5-Tab Navigation Bar */}
+      <div className="grid grid-cols-5 border-b border-surface-border bg-surface-subtle text-[11px]">
         <button
           onClick={() => setActiveTab('presets')}
           className={`py-3 px-1 text-center font-medium border-b-2 transition-colors ${
             activeTab === 'presets'
-              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-semibold'
+              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
@@ -78,7 +96,7 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
           onClick={() => setActiveTab('cutout')}
           className={`py-3 px-1 text-center font-medium border-b-2 transition-colors ${
             activeTab === 'cutout'
-              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-semibold'
+              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
@@ -88,17 +106,27 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
           onClick={() => setActiveTab('shadow')}
           className={`py-3 px-1 text-center font-medium border-b-2 transition-colors ${
             activeTab === 'shadow'
-              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-semibold'
+              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           Đổ bóng
         </button>
         <button
+          onClick={() => setActiveTab('badges')}
+          className={`py-3 px-1 text-center font-medium border-b-2 transition-colors ${
+            activeTab === 'badges'
+              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          Khung tem
+        </button>
+        <button
           onClick={() => setActiveTab('adjust')}
           className={`py-3 px-1 text-center font-medium border-b-2 transition-colors ${
             activeTab === 'adjust'
-              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-semibold'
+              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
@@ -106,31 +134,70 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
         </button>
       </div>
 
-      {/* Tab Content Panel */}
+      {/* Tab Panels */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* 1. PRESETS TAB */}
+        {/* 1. MARKETPLACE PRESETS TAB */}
         {activeTab === 'presets' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                 {t.tab_presets}
               </span>
-              <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
+              <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
                 {t.compliant}
               </span>
             </div>
 
-            <div className="space-y-2">
+            {/* Amazon 1-Click Auto Framing Feature */}
+            {selectedPreset.id === 'amazon_white_85' && (
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-900">Chuẩn Amazon 85% Diện Tích</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                    Khuyến nghị
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Tự động co dãn sản phẩm chiếm đúng 85% khung hình và áp dụng nền trắng tinh khiết RGB(255,255,255).
+                </p>
+                <button
+                  onClick={onAutoFrameAmazon}
+                  className="w-full py-1.5 px-3 text-xs font-semibold rounded bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  <Maximize className="w-3.5 h-3.5" />
+                  <span>Áp dụng căn khung 85% chuẩn Amazon</span>
+                </button>
+              </div>
+            )}
+
+            {/* Scale Slider */}
+            <div className="space-y-1 pt-1">
+              <div className="flex justify-between text-xs text-slate-600">
+                <span>Tỷ lệ khung hình sản phẩm (Scale)</span>
+                <span className="font-mono">{Math.round(transform.scale * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="1.5"
+                step="0.02"
+                value={transform.scale}
+                onChange={(e) => onTransformChange({ ...transform, scale: Number(e.target.value) })}
+                className="w-full accent-kroma-600 cursor-pointer"
+              />
+            </div>
+
+            <div className="space-y-2 pt-2">
               {MARKETPLACE_PRESETS.map((p) => {
                 const isSelected = p.id === selectedPreset.id;
                 return (
                   <div
                     key={p.id}
                     onClick={() => onSelectPreset(p)}
-                    className={`p-3 rounded border cursor-pointer transition-all ${
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
                       isSelected
-                        ? 'border-kroma-600 bg-kroma-50/50 shadow-xs'
+                        ? 'border-kroma-600 bg-kroma-50/60 shadow-xs'
                         : 'border-surface-border hover:border-slate-300 bg-surface-light'
                     }`}
                   >
@@ -140,7 +207,7 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
                         {p.width} × {p.height} ({p.aspect_ratio})
                       </span>
                     </div>
-                    <p className="text-xs font-medium text-slate-700">{p.name_vi}</p>
+                    <p className="text-xs font-semibold text-slate-800">{p.name_vi}</p>
                     <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                       {p.rule_description_vi}
                     </p>
@@ -154,24 +221,23 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
         {/* 2. AI CUTOUT TAB */}
         {activeTab === 'cutout' && (
           <div className="space-y-5">
-            <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider block">
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
               {t.tab_cutout}
             </span>
 
-            {/* Auto Remove BG Action */}
-            <div className="p-3.5 rounded border border-slate-200 bg-surface-subtle space-y-2.5">
-              <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-surface-subtle space-y-2.5">
+              <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Wand2 className="w-3.5 h-3.5 text-kroma-600" />
-                <span>RMBG-1.4 Neural Engine</span>
+                <span>RMBG-1.4 Neural Engine (Offline)</span>
               </p>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                Tách chủ thể chính xác từng sợi tóc, biên mềm sản phẩm trong suốt hoàn toàn.
+                Tách chủ thể chính xác từng sợi tóc, viền mềm trong suốt mà không gửi dữ liệu ra ngoài.
               </p>
 
               {asset?.hasBackgroundRemoved ? (
                 <button
                   onClick={onRestoreOriginal}
-                  className="w-full py-2 px-3 text-xs font-medium rounded border border-slate-300 bg-surface-light hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full py-2 px-3 text-xs font-semibold rounded border border-slate-300 bg-surface-light hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
                   <span>{t.restore_bg}</span>
@@ -180,7 +246,7 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
                 <button
                   onClick={onRemoveBackground}
                   disabled={!asset || isRemovingBg}
-                  className="w-full py-2 px-3 text-xs font-semibold rounded bg-kroma-600 hover:bg-kroma-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                  className="w-full py-2 px-3 text-xs font-bold rounded bg-kroma-600 hover:bg-kroma-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{isRemovingBg ? t.removing_bg : t.remove_bg}</span>
@@ -191,13 +257,13 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
             {/* Refine Edge Tool */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                   <Paintbrush className="w-3.5 h-3.5 text-slate-600" />
                   <span>{t.refine_edge}</span>
                 </span>
                 <button
                   onClick={onToggleBrush}
-                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
                     isBrushActive
                       ? 'bg-kroma-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -230,7 +296,7 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
         {/* 3. PHYSICAL SHADOW TAB */}
         {activeTab === 'shadow' && (
           <div className="space-y-5">
-            <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider block">
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
               {t.tab_shadow}
             </span>
 
@@ -251,9 +317,9 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
                       type: item.type as ShadowType,
                     })
                   }
-                  className={`p-2.5 rounded text-xs text-left border font-medium transition-all ${
+                  className={`p-2.5 rounded-lg text-xs text-left border font-medium transition-all ${
                     shadow.type === item.type
-                      ? 'border-kroma-600 bg-kroma-50 text-kroma-900 font-semibold shadow-xs'
+                      ? 'border-kroma-600 bg-kroma-50 text-kroma-950 font-bold shadow-xs'
                       : 'border-surface-border hover:border-slate-300 text-slate-700 bg-surface-light'
                   }`}
                 >
@@ -264,7 +330,6 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
 
             {shadow.enabled && shadow.type !== 'none' && (
               <div className="space-y-4 pt-2">
-                {/* Opacity */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs text-slate-600">
                     <span>{t.opacity}</span>
@@ -283,7 +348,6 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
                   />
                 </div>
 
-                {/* Blur */}
                 {shadow.type !== 'contact' && (
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs text-slate-600">
@@ -303,7 +367,6 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
                   </div>
                 )}
 
-                {/* Distance */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs text-slate-600">
                     <span>{t.distance}</span>
@@ -321,7 +384,6 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
                   />
                 </div>
 
-                {/* Angle */}
                 {shadow.type === 'floor' && (
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs text-slate-600">
@@ -345,11 +407,131 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
           </div>
         )}
 
-        {/* 4. FLOAT32 LIGHT ADJUSTMENTS */}
+        {/* 4. PROMO BADGES & WATERMARK TAB */}
+        {activeTab === 'badges' && (
+          <div className="space-y-5">
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+              {t.tab_badges}
+            </span>
+
+            {/* Promo Badges Section */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-slate-700 block">
+                {t.promo_badge}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { type: 'none', label: t.badge_none },
+                  { type: 'flash_sale', label: t.badge_flash_sale },
+                  { type: 'freeship', label: t.badge_freeship },
+                  { type: 'mall', label: t.badge_mall },
+                  { type: 'top_deal', label: t.badge_top_deal },
+                  { type: 'discount_50', label: t.badge_discount_50 },
+                ].map((item) => (
+                  <button
+                    key={item.type}
+                    onClick={() =>
+                      onPromoBadgeChange({
+                        ...promoBadge,
+                        enabled: item.type !== 'none',
+                        type: item.type as PromoBadgeType,
+                      })
+                    }
+                    className={`p-2 rounded-lg text-xs font-medium border text-left transition-all ${
+                      promoBadge.type === item.type
+                        ? 'border-kroma-600 bg-kroma-50 text-kroma-950 font-bold shadow-2xs'
+                        : 'border-surface-border hover:border-slate-300 text-slate-700 bg-surface-light'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Smart Watermark Section */}
+            <div className="space-y-3 pt-3 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700">
+                  {t.watermark_title}
+                </label>
+                <input
+                  type="checkbox"
+                  checked={watermark.enabled}
+                  onChange={(e) => onWatermarkChange({ ...watermark, enabled: e.target.checked })}
+                  className="rounded text-kroma-600"
+                />
+              </div>
+
+              {watermark.enabled && (
+                <div className="space-y-3 pt-2">
+                  <input
+                    type="text"
+                    value={watermark.text}
+                    onChange={(e) => onWatermarkChange({ ...watermark, text: e.target.value })}
+                    placeholder={t.watermark_placeholder}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:border-kroma-600 focus:outline-none"
+                  />
+
+                  {/* Watermark Positions */}
+                  <div className="space-y-1">
+                    <span className="text-[11px] text-slate-500">{t.watermark_position}</span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { pos: 'bottom_right', label: t.pos_bottom_right },
+                        { pos: 'bottom_left', label: t.pos_bottom_left },
+                        { pos: 'center', label: t.pos_center },
+                        { pos: 'diagonal_repeat', label: t.pos_repeat },
+                      ].map((item) => (
+                        <button
+                          key={item.pos}
+                          onClick={() =>
+                            onWatermarkChange({
+                              ...watermark,
+                              position: item.pos as any,
+                            })
+                          }
+                          className={`p-1.5 text-[11px] rounded border text-center ${
+                            watermark.position === item.pos
+                              ? 'border-kroma-600 bg-kroma-50 text-kroma-900 font-bold'
+                              : 'border-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Watermark Opacity */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-slate-500">
+                      <span>Độ trong suốt</span>
+                      <span className="font-mono">{Math.round(watermark.opacity * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="0.9"
+                      step="0.05"
+                      value={watermark.opacity}
+                      onChange={(e) =>
+                        onWatermarkChange({ ...watermark, opacity: Number(e.target.value) })
+                      }
+                      className="w-full accent-kroma-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 5. FLOAT32 LIGHT ADJUSTMENTS */}
         {activeTab === 'adjust' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                 {t.tab_adjust}
               </span>
               <button
@@ -370,7 +552,6 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
               </button>
             </div>
 
-            {/* Exposure */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-slate-600">
                 <span>Độ phơi sáng (Exposure)</span>
@@ -388,7 +569,6 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
               />
             </div>
 
-            {/* Contrast */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-slate-600">
                 <span>Độ tương phản (Contrast)</span>
@@ -406,7 +586,6 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
               />
             </div>
 
-            {/* Temperature */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-slate-600">
                 <span>Cân bằng trắng (Temperature)</span>
@@ -424,7 +603,6 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
               />
             </div>
 
-            {/* Tint */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-slate-600">
                 <span>Sắc độ màu (Tint)</span>

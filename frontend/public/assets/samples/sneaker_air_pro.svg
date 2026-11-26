@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sole-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#E2E8F0" />
+      <stop offset="100%" stop-color="#94A3B8" />
+    </linearGradient>
+    <linearGradient id="upper-grad" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#334155" />
+    </linearGradient>
+    <linearGradient id="accent-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+    <linearGradient id="accent-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#EF4444" />
+    </linearGradient>
+    <filter id="sneaker-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="12" flood-color="#0F172A" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <g transform="translate(100, 200)" filter="url(#sneaker-shadow)">
+    <!-- Sole Base Layer -->
+    <path d="M 120 460 C 180 470 300 480 420 475 C 540 470 660 490 740 450 C 780 430 800 390 780 370 C 760 350 720 360 680 370 C 600 390 480 380 360 385 C 240 390 160 410 110 430 C 90 440 95 455 120 460 Z" fill="url(#sole-grad)" />
+
+    <!-- Cushioned Midsole with tread cuts -->
+    <path d="M 130 450 C 220 460 340 465 460 455 C 580 445 680 460 750 420 C 760 415 750 395 720 395 C 620 405 500 400 380 405 C 260 410 180 425 130 435 Z" fill="#F8FAFC" />
+
+    <!-- Outsole Grip Accents -->
+    <path d="M 200 460 L 220 472 L 250 472 L 230 460 Z" fill="#F97316" />
+    <path d="M 280 463 L 300 475 L 330 475 L 310 463 Z" fill="#F97316" />
+    <path d="M 360 465 L 380 476 L 410 476 L 390 465 Z" fill="#F97316" />
+
+    <!-- Air Unit Bubble in Heel -->
+    <rect x="180" y="420" width="120" height="24" rx="12" fill="url(#accent-cyan)" opacity="0.85" />
+    <rect x="190" y="424" width="100" height="16" rx="8" fill="#FFFFFF" opacity="0.5" />
+
+    <!-- Upper Body Silhouette -->
+    <path d="M 150 430 C 130 380 150 280 200 220 C 250 160 300 150 340 180 C 370 205 380 260 440 280 C 500 300 620 320 700 345 C 750 360 760 385 730 400 C 650 420 520 410 390 415 C 260 420 180 425 150 430 Z" fill="url(#upper-grad)" />
+
+    <!-- Heel Collar & Cushioning -->
+    <path d="M 190 230 C 220 170 270 145 320 160 C 340 165 350 190 330 220 C 300 250 250 260 200 255 Z" fill="#475569" />
+    <path d="M 215 220 C 235 180 265 165 295 175 C 310 180 315 200 300 220 C 280 240 245 245 215 220 Z" fill="#F8FAFC" />
+
+    <!-- Breathable Mesh Toe Box -->
+    <path d="M 520 310 C 580 325 650 340 690 355 C 720 365 710 385 660 390 C 600 390 540 370 490 345 Z" fill="#1E293B" />
+    <ellipse cx="600" cy="355" rx="70" ry="25" fill="#334155" opacity="0.6" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,3" />
+
+    <!-- Dynamic Speed Wave / Swoop (Cyan & Neon Orange) -->
+    <path d="M 240 380 C 320 370 420 330 520 280 C 500 320 400 380 300 410 Z" fill="url(#accent-orange)" />
+    <path d="M 270 365 C 350 350 450 310 550 260 C 520 300 420 360 330 390 Z" fill="url(#accent-cyan)" />
+
+    <!-- Eyelets and Lacing System -->
+    <path d="M 330 220 L 480 300" stroke="#06B6D4" stroke-width="6" stroke-linecap="round" />
+    <circle cx="340" cy="225" r="5" fill="#FFFFFF" />
+    <circle cx="375" cy="245" r="5" fill="#FFFFFF" />
+    <circle cx="410" cy="265" r="5" fill="#FFFFFF" />
+    <circle cx="445" cy="285" r="5" fill="#FFFFFF" />
+    <circle cx="480" cy="305" r="5" fill="#FFFFFF" />
+
+    <!-- Zig-Zag Shoelaces -->
+    <path d="M 340 225 L 390 240 L 375 245 L 430 260 L 410 265 L 465 280 L 445 285 L 490 300" stroke="#F8FAFC" stroke-width="4" stroke-linecap="round" fill="none" />
+  </g>
+</svg>
