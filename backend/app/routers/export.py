@@ -2,7 +2,7 @@ import uuid
 import zipfile
 import io
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from ..models.export import BatchExportRequest, BatchExportResponse
@@ -18,7 +18,7 @@ def trigger_batch_export(data: BatchExportRequest):
     
     # Create empty/sample zip archive
     with zipfile.ZipFile(str(zip_path), 'w', compression=zipfile.ZIP_DEFLATED) as z:
-        manifest_content = f"KROMA Batch Export Manifest\nExport ID: {export_id}\nProject ID: {data.project_id}\nTimestamp: {datetime.utcnow().isoformat()}\nTotal Recipes: {len(data.recipes)}\n"
+        manifest_content = f"KROMA Batch Export Manifest\nExport ID: {export_id}\nProject ID: {data.project_id}\nTimestamp: {datetime.now(timezone.utc).isoformat()}\nTotal Recipes: {len(data.recipes)}\n"
         z.writestr("manifest.txt", manifest_content)
         
         # Add a placeholder sample image per recipe
