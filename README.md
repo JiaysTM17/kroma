@@ -1,179 +1,199 @@
 <div align="center">
 
-  <img src="03_THUONG_HIEU_VA_THIET_KE_LOGO_KROMA/Assets_Vector_SVG/kroma-logo-horizontal.svg" alt="KROMA Logo" width="580" />
+  <img src="03_THUONG_HIEU_VA_THIET_KE_LOGO_KROMA/Assets_Vector_SVG/kroma-logo-horizontal.svg" alt="Kroma Logo" width="520" />
 
-  <br />
-
-  <p align="center">
-    <strong>Nền Tảng Xử Lý Ảnh Sản Phẩm Thông Minh Dành Riêng Cho Thương Mại Điện Tử</strong>
-    <br />
-    <em>Intelligent Image Studio for Next-Gen E-Commerce</em>
+  <p align="center" style="font-size: 15px; color: #475569; margin-top: 12px; margin-bottom: 20px;">
+    Studio xử lý và chuẩn hóa ảnh sản phẩm thương mại điện tử
   </p>
 
   <p align="center">
-    <a href="#-gi%E1%BB%9Bi-thi%E1%BB%87u-d%E1%BB%B1-%C3%A1n"><img src="https://img.shields.io/badge/Version-1.0.0--Architecture-4F46E5?style=for-the-badge" alt="Version"></a>
-    <a href="#-ki%E1%BA%BFn-tr%C3%BAc--c%C3%B4ng-ngh%E1%BB%87"><img src="https://img.shields.io/badge/Architecture-Web_Hybrid_AI-06B6D4?style=for-the-badge" alt="Architecture"></a>
-    <a href="#-b%E1%BB%99-t%C3%A0i-li%E1%BB%87u-d%E1%BB%B1-%C3%A1n"><img src="https://img.shields.io/badge/Docs-Complete_Dossier-F43F5E?style=for-the-badge" alt="Docs"></a>
-    <a href="https://github.com/JiaysTM17"><img src="https://img.shields.io/badge/Author-JiaysTM17-0F172A?style=for-the-badge&logo=github" alt="Author"></a>
+    <code>v1.0.0-architecture</code> &nbsp;•&nbsp;
+    <code>Client-Side WebGPU AI</code> &nbsp;•&nbsp;
+    <code>Non-Destructive Graph</code> &nbsp;•&nbsp;
+    <code>Maintainer: @JiaysTM17</code>
   </p>
 
 </div>
 
 ---
 
-## 📌 MỤC LỤC
-- [1. Giới Thiệu Dự Án](#-giới-thiệu-dự-án)
-- [2. Điểm Đột Phá & Tính Năng Trọng Tâm](#-điểm-đột-phá--tính-năng-trọng-tâm)
-- [3. Kiến Trúc & Công Nghệ Hiện Đại (Web Client-Side AI)](#-kiến-trúc--công-nghệ-hiện-đại)
-- [4. Hệ Thống Nhận Diện Thương Hiệu KROMA](#-hệ-thống-nhận-diện-thương-hiệu-kroma)
-- [5. Danh Mục Hồ Sơ & Tài Liệu Kỹ Thuật](#-danh-mục-hồ-sơ--tài-liệu-kỹ-thuật)
-- [6. Lộ Trình Triển Khai MVP (60 Ngày)](#-lộ-trình-triển-khai-mvp-60-ngày)
-- [7. Bản Quyền & Tác Giả](#-bản-quyền--tác-giả)
+### Mục lục
+- [1. Giới thiệu](#1-giới-thiệu)
+- [2. Năng lực cốt lõi](#2-năng-lực-cốt-lõi)
+- [3. Kiến trúc kỹ thuật](#3-kiến-trúc-kỹ-thuật)
+- [4. Hệ thống nhận diện thương hiệu](#4-hệ-thống-nhận-diện-thương-hiệu)
+- [5. Cấu trúc mã nguồn và hồ sơ bàn giao](#5-cấu-trúc-mã-nguồn-và-hồ-sơ-bàn-giao)
+- [6. Kế hoạch triển khai kỹ thuật](#6-kế-hoạch-triển-khai-kỹ-thuật)
+- [7. Giấy phép và liên hệ](#7-giấy-phép-và-liên-hệ)
 
 ---
 
-## 🚀 GIỚI THIỆU DỰ ÁN
+### 1. Giới thiệu
 
-**KROMA** (tên mã phát triển nội bộ: `XLAS`) là hệ thống ứng dụng web chuyên sâu về xử lý và chuẩn hóa hình ảnh sản phẩm thương mại điện tử. 
+Kroma (mã dự án nội bộ: `XLAS`) là hệ thống ứng dụng web chuyên sâu phục vụ chuẩn hóa hình ảnh sản phẩm cho cá nhân kinh doanh, studio chụp ảnh thương mại và nhà bán lẻ trực tuyến. 
 
-Dự án được thiết kế xuất phát từ nỗi đau lớn nhất của hàng triệu **Nhà bán hàng online (E-commerce Sellers), Freelancers và Studio chụp ảnh**:
-- Tốn hàng giờ tách nền thủ công từng ảnh, viền lem nhem, mất chi tiết sợi vải/tóc/chai thủy tinh.
-- Sau khi tách nền, sản phẩm bị "trơ trọi", không có chiều sâu nếu không đổ bóng tự nhiên.
-- Mất thời gian co kéo, căn chỉnh thủ công theo kích thước từng sàn (Shopee 1:1, TikTok Shop 3:4/1:1, Amazon 85% nền trắng).
-- Bị đối thủ sao chép, đánh cắp hình ảnh sản phẩm khi đăng bán.
-- Chi phí thuê server GPU xử lý AI đám mây quá đắt đỏ khiến mô hình kinh doanh SaaS khó có lãi.
-
-**KROMA giải quyết toàn diện các vấn đề trên** bằng một quy trình xử lý ảnh thông minh, áp dụng triết lý *chỉnh sửa không phá hủy (Non-destructive)* và công nghệ *Client-side AI* tối ưu chi phí vận hành.
+Hệ thống giải quyết bốn điểm nghẽn kỹ thuật điển hình trong vận hành hình ảnh thương mại điện tử:
+1. **Bảo toàn chi tiết biên khi tách nền:** Giữ nguyên độ trong suốt của thủy tinh, viền ren, sợi vải dệt và chất liệu kim loại phản xạ.
+2. **Chiều sâu vật lý:** Tái tạo bóng đổ tiếp xúc (Contact shadow) và bóng sàn góc nghiêng (Directional floor shadow) sau khi tách nền thô, đưa vật thể vào không gian quang học chân thực.
+3. **Quy chuẩn hiển thị đa kênh:** Tự động điều chỉnh kích thước và tỷ lệ diện tích chủ thể theo thông số kỹ thuật bắt buộc của Shopee, TikTok Shop, Lazada và Amazon.
+4. **Chi phí hạ tầng tính toán:** Tận dụng công nghệ WebGPU trên trình duyệt người dùng để chạy mô hình phân đoạn thị giác, loại bỏ phụ thuộc vào cụm máy chủ GPU đám mây đắt đỏ.
 
 ---
 
-## ✨ ĐIỂM ĐỘT PHÁ & TÍNH NĂNG TRỌNG TÂM
+### 2. Năng lực cốt lõi
 
-### 1. 🎯 Tách Nền AI & Tinh Chỉnh Mặt Nạ Siêu Nét (Precision Masking)
-* Tự động nhận diện chủ thể sản phẩm, bóc tách nền với độ phân giải cao trong tích tắc.
-* Hỗ trợ cọ tinh chỉnh viền (Refine Brush), giữ nguyên chi tiết trong suốt, sợi vải, tóc và trang sức.
-* Kiểm tra tức thì trên nhiều nền: Trắng tinh khiết, đen studio, caro trong suốt (transparency checkerboard).
+#### 2.1 Phân đoạn ngữ nghĩa và hoàn thiện mặt nạ (Semantic Masking)
+- Tự động phát hiện biên chủ thể bằng mô hình mạng nơ-ron tích chập nhẹ (RMBG-1.4 / BiRefNet) biên dịch qua WebAssembly và ONNX Runtime Web.
+- Bút tinh chỉnh viền (Refine edge brush) với bán kính tùy biến, cho phép xử lý thủ công các vùng chuyển tiếp phức tạp như lông thú, tóc và sợi tổng hợp.
+- Ba chế độ kiểm tra nền: Nền trắng tuyệt đối (`#FFFFFF`), nền tối kiểm tra ánh sáng viền (`#0F172A`) và lưới ca-rô độ trong suốt tiêu chuẩn.
 
-### 2. 🪄 AI Auto Shadow (Đổ Bóng Tự Nhiên Thông Minh)
-* **Drop Shadow:** Bóng đổ mềm mại dưới đáy sản phẩm tạo cảm giác đặt vững chãi trên mặt bàn.
-* **Floor Shadow:** Bóng đổ ngả góc theo nguồn sáng nhân tạo như trong studio chuyên nghiệp.
-* **Reflection Shadow:** Bóng phản chiếu mặt kính / mặt nước cho mỹ phẩm và đồ điện tử sang trọng.
+#### 2.2 Tái tạo bóng đổ vật lý (Physical Shadow Generator)
+- **Contact Shadow:** Vùng tối đậm tại chân đế sản phẩm mô phỏng cơ chế che khuất ánh sáng môi trường (Ambient occlusion).
+- **Directional Floor Shadow:** Bóng đổ dài theo tọa độ nguồn sáng nhân tạo (Độ dài, độ mờ biên, góc xiên từ 0° đến 360°).
+- **Specular Reflection:** Tạo ảnh phản chiếu mờ dần trên bề mặt kính và nước cho các sản phẩm mỹ phẩm, đồng hồ và đồ gia dụng cao cấp.
 
-### 3. 📐 Bộ Preset Kích Thước Chuẩn Sàn 1-Click
-* **Shopee:** Chuẩn vuông 1024x1024 px, tối ưu dung lượng tải nhanh trên app di động.
-* **TikTok Shop:** Tỷ lệ chuẩn 1:1 và 3:4 chuẩn hóa khung hình dọc.
-* **Amazon / Google Shopping:** Tự động đưa về nền trắng tinh khiết (RGB 255,255,255) và căn tỷ lệ sản phẩm chiếm đúng **85% diện tích khung hình** theo quy chuẩn quốc tế.
-* **Lazada & Tiki:** Tự động điều chỉnh padding và vị trí logo thương hiệu.
+#### 2.3 Bộ mẫu kích thước sàn giao dịch (Marketplace Preset Engine)
+- **Shopee:** Tỷ lệ 1:1, độ phân giải 1024 × 1024 px, nén định dạng WebP/JPEG tối ưu tốc độ tải trên thiết bị di động.
+- **TikTok Shop:** Tỷ lệ khung hình dọc 3:4 (1200 × 1600 px) và vuông 1:1, căn biên an toàn cho các nút chức năng giao diện ứng dụng.
+- **Amazon / Google Shopping:** Nền trắng tinh khiết RGB (255, 255, 255), tự động căn chỉnh chủ thể chiếm đúng **85% diện tích khung ảnh** theo tiêu chuẩn niêm yết quốc tế.
+- **Batch Export:** Xuất đồng thời nhiều định dạng và tỷ lệ từ một ảnh nguồn duy nhất theo công thức cấu hình (Export recipes).
 
-### 4. 🛡️ Smart Watermark & Khung Flash Sale Hàng Loạt
-* Đóng khung khuyến mại (Freeship Xtra, Flash Sale, Voucher Khủng) hàng loạt mà không làm méo hình dáng sản phẩm.
-* Chèn Watermark thông minh (chìm/nổi) để chống đánh cắp ảnh trên sàn TMĐT.
-
-### 5. 📱 Mobile Proofing Link (Duyệt Ảnh 1 Chạm Cho Khách Hàng)
-* Freelancer/Studio xử lý xong chỉ cần xuất 1 đường link gửi khách xem trên điện thoại.
-* Khách duyệt, thích hoặc thả ghim yêu cầu sửa trực tiếp trên từng vùng ảnh; phản hồi đồng bộ tức thì.
-
-### 6. 🔄 Chỉnh Sửa Không Phá Hủy (Non-Destructive Pipeline)
-* Bảo toàn 100% tệp gốc. Mọi thao tác cắt, xoay, chỉnh sáng, tách nền được lưu thành đồ thị tham số (Graph Revision).
-* Undo/Redo không giới hạn, phục hồi trạng thái sau sự cố (Crash Recovery).
+#### 2.4 Quản lý màu và chỉnh sửa không phá hủy (Non-Destructive Pipeline)
+- Dữ liệu ảnh nguồn được bảo toàn tuyệt đối ở trạng thái chỉ đọc (Read-only immutable asset).
+- Đồ thị xử lý nội bộ dùng không gian màu tuyến tính (Linear sRGB) với độ chính xác số thực dấu phẩy động 32-bit (RGBA Float32) và quy ước alpha nhân trước (Premultiplied alpha).
+- Lịch sử thao tác theo mô hình lệnh (Command pattern), cho phép hoàn tác vô hạn và phục hồi trạng thái làm việc sau sự cố (Crash recovery journal).
 
 ---
 
-## 🛠️ KIẾN TRÚC & CÔNG NGHỆ HIỆN ĐẠI
+### 3. Kiến trúc kỹ thuật
 
-KROMA tiên phong áp dụng mô hình **Hybrid Client-Side AI**, giúp nền tảng chạy siêu nhanh mà **tiết kiệm đến 95% chi phí máy chủ GPU**:
+Kroma sử dụng mô hình lai **Client-Side First**, phân tách ranh giới rõ ràng giữa tác vụ render đồ họa và dịch vụ quản trị:
 
 ```
-                       [ TRÌNH DUYỆT NGƯỜI DÙNG (CLIENT) ]
-                                       │
-     ┌─────────────────────────────────┼────────────────────────────────┐
-     ▼                                 ▼                                ▼
-[ Next.js 15 / React ]       [ WebGL / WebGPU Canvas ]      [ ONNX Runtime Web / WASM ]
- Giao diện người dùng         Render hình ảnh 60fps          Mô hình AI RMBG / BiRefNet
- Quản lý bộ sưu tập ảnh       Cắt, xoay, áp bộ lọc màu       Tách nền trực tiếp bằng GPU máy trạm
-                                       │                     (KHÔNG TỐN CHI PHÍ SERVER GPU!)
-                                       │
-                                       ▼ (Chỉ khi cần đồng bộ & tác vụ nặng)
-                     [ HỆ THỐNG ĐÁM MÂY (BACKEND CLOUD) ]
-                                       │
-     ┌─────────────────────────────────┴────────────────────────────────┐
-     ▼                                                                  ▼
-[ FastAPI Stateless Backend ]                              [ Serverless AI Engine ]
- Quản lý tài khoản, Preset, Thanh toán                      Sinh phông nền nghệ thuật (Generative AI)
- PostgreSQL + Private Object Storage (S3/Cloudflare R2)     Chạy theo nhu cầu (Pay-as-you-go)
++-------------------------------------------------------------------------+
+|                       TRÌNH DUYỆT KHÁCH HÀNG (CLIENT)                   |
+|                                                                         |
+|  +--------------------+  +---------------------+  +------------------+  |
+|  |     Next.js 15     |  |   WebGL / WebGPU    |  | ONNX Runtime Web |  |
+|  |  Giao diện & State |  |   Canvas Engine     |  | Inference cục bộ |  |
+|  |  TypeScript & CSS  |  |  Biến đổi Float32   |  | Không tốn GPU    |  |
+|  +--------------------+  +---------------------+  +------------------+  |
++-------------------------------------------------------------------------+
+                                    |
+                           HTTPS / WSS (REST API)
+                                    |
++-------------------------------------------------------------------------+
+|                          HẠ TẦNG ĐÁM MÂY (BACKEND)                      |
+|                                                                         |
+|  +--------------------+  +---------------------+  +------------------+  |
+|  |   FastAPI Service  |  |    PostgreSQL 16    |  | Private Storage  |  |
+|  |   Stateless REST   |  |   Catalog & Presets |  | S3 / R2 Bucket   |  |
+|  +--------------------+  +---------------------+  +------------------+  |
++-------------------------------------------------------------------------+
 ```
 
----
-
-## 🎨 HỆ THỐNG NHẬN DIỆN THƯƠNG HIỆU KROMA
-
-| Thành tố | Giá trị / Mã màu | Ý nghĩa thương hiệu |
+| Thành phần | Công nghệ lựa chọn | Mục đích sử dụng |
 | :--- | :--- | :--- |
-| **Tên gọi KROMA** | Gốc từ *Khroma (χρῶμα)* | Biểu thị **độ thuần khiết, rực rỡ và bão hòa tuyệt đối của màu sắc (Chroma)**. Âm bật `/k/` dứt khoát, công nghệ cao. |
-| **Cột đứng Canvas** | Trục dọc chữ K | Đại diện cho **ảnh gốc nguyên bản** và triết lý **chỉnh sửa không phá hủy**. |
-| **Dải quang phổ trên** | `#4F46E5` → `#F43F5E` | Sức mạnh sáng tạo và nâng cấp của **Trí tuệ Nhân tạo (AI Enhancement)**. |
-| **Dải cắt lớp dưới** | `#06B6D4` → `#1D4ED8` | Kỹ thuật **bóc tách layer, tách nền viền siêu nét** và đổ bóng tự nhiên. |
-| **Lăng kính hội tụ** | Khẩu độ quang học trung tâm | Trái tim thuật toán xử lý hàng loạt (**Batch Processing Engine**). |
-| **Nền Trắng Chuẩn** | `#FFFFFF` | Tiêu chuẩn vàng của thương mại điện tử quốc tế (Amazon, Google Shopping). |
+| **Giao diện người dùng** | Next.js 15, React 19, Tailwind CSS | Điều phối luồng thao tác, quản lý thư viện ảnh và dự án |
+| **Engine hiển thị** | HTML5 Canvas, WebGL2, WebGPU Shader | Hiển thị thời gian thực, pan/zoom mượt mà với ảnh độ phân giải cao |
+| **Mô hình thị giác máy tính** | RMBG-1.4, BiRefNet qua ONNX Runtime Web | Tách nền trực tiếp trên chip đồ họa của máy người dùng |
+| **Máy chủ API** | Python 3.11, FastAPI | Xác thực người dùng, lưu cấu hình mẫu và quản lý phiên làm việc |
+| **Cơ sở dữ liệu** | PostgreSQL 16, SQLite (cho bản local) | Lưu trữ thông tin tài liệu, siêu dữ liệu dự án và lịch sử sửa đổi |
+| **Kho lưu trữ tệp** | Cloudflare R2 / AWS S3 | Lưu trữ tài sản xuất bản và bản sao lưu có phân quyền |
 
 ---
 
-## 📁 DANH MỤC HỒ SƠ & TÀI LIỆU KỸ THUẬT
+### 4. Hệ thống nhận diện thương hiệu
 
-Toàn bộ tài liệu phân tích, kiến trúc và nhận diện thương hiệu được đóng gói hoàn chỉnh trong kho lưu trữ:
+Biểu tượng Kroma được xây dựng dựa trên nguyên lý khúc xạ quang học và khoa học phân tích sắc độ (Chroma):
 
 ```
-XLAS/
-├── 01_HO_SO_THIET_KE_HE_THONG/
-│   ├── 00_DANH_MUC_HO_SO_VA_HUONG_DAN_IN.docx            # Danh mục hồ sơ & hướng dẫn xuất bản
-│   ├── 01_PHAN_TICH_NGHIEP_VU_VA_YEU_CAU_SAN_PHAM.docx   # 30 nhóm chức năng, 48 yêu cầu CX, 14 use cases
-│   ├── 02_KIEN_TRUC_HE_THONG_VA_CAU_TRUC_MA_NGUON.docx   # Phân tầng kiến trúc, module, ADR01-ADR06
-│   ├── 03_CONG_NGHE_VA_CONG_CU_PHAT_TRIEN.docx           # So sánh nền tảng, stack kỹ thuật, giấy phép
-│   ├── 04_THIET_KE_DU_LIEU_API_VA_AI.docx                # Hợp đồng ảnh Float32, API, vòng đời AI, ledger
-│   └── 05_KE_HOACH_TRIEN_KHAI_KIEM_THU_VAN_HANH.docx     # Kế hoạch Sprint, ma trận kiểm thử, budget
+       Trục Canvas vững chãi           Dải quang phổ sáng tạo AI
+            [ Pillar ]                    [ Upper Beam ]
+                 │                              ▲
+                 │        ┌─────────────────────┘
+                 ▼        ▼
+               ┌───┐    ╱╲
+               │   │   ╱  ╲     Tâm hội tụ: Lăng kính quang học & Khẩu độ
+               │   ├──┤ ★  ├─── [ Prism Core & Lens Aperture ]
+               │   │   ╲  ╱
+               └───┘    ╲╱
+                          ▼
+                    [ Lower Beam ]
+              Dải bóc tách nền & Layer
+```
+
+#### Bảng màu nhận diện chuẩn (Brand Palette)
+
+| Sắc độ | Tên quy ước | Mã HEX | Vai trò trong hệ thống |
+| :--- | :--- | :--- | :--- |
+| █ | **Electric Indigo** | `#4F46E5` | Màu công nghệ chủ đạo, logic thuật toán và sự ổn định |
+| █ | **Cyan Glaze** | `#06B6D4` | Điểm nhấn quang học, viền mặt nạ sắc nét và trong trẻo |
+| █ | **Radiant Coral** | `#F43F5E` | Sắc độ bão hòa, kích thích thị giác cho sản phẩm thương mại |
+| █ | **Optic Amber** | `#FACC15` | Điểm sáng khúc xạ thấu kính tại tâm khẩu độ |
+| █ | **Obsidian Slate** | `#0F172A` | Màu chữ và đường nét kỹ thuật, tương phản cao trên nền trắng |
+| █ | **Pure Canvas White**| `#FFFFFF` | Nền tiêu chuẩn hiển thị của thương mại điện tử quốc tế |
+
+---
+
+### 5. Cấu trúc mã nguồn và hồ sơ bàn giao
+
+Toàn bộ tài liệu phân tích nghiệp vụ, kiến trúc kỹ thuật và tài nguyên vector được tổ chức theo cấu trúc phân tầng:
+
+```
+kroma/
+├── README.md                                          # Tài liệu tổng quan dự án
+├── .gitignore                                         # Cấu hình loại trừ tệp tạm hệ thống và Office
 │
-├── 02_CHIEN_LUOC_SAN_PHAM_VA_DE_XUAT_TOI_UU/
-│   └── 07_BAO_CAO_DANH_GIA_VA_DE_XUAT_TOI_UU_KROMA.docx  # Đánh giá Web vs Desktop, lộ trình thêm/bớt tính năng
+├── 01_HO_SO_THIET_KE_HE_THONG/                        # Hồ sơ đặc tả kỹ thuật và nghiệp vụ
+│   ├── 00_DANH_MUC_HO_SO_VA_HUONG_DAN_IN.docx         # Danh mục tổng hợp và quy cách xuất bản
+│   ├── 01_PHAN_TICH_NGHIEP_VU_VA_YEU_CAU_SAN_PHAM.docx# 30 nhóm chức năng, 14 use cases, 48 tiêu chuẩn CX
+│   ├── 02_KIEN_TRUC_HE_THONG_VA_CAU_TRUC_MA_NGUON.docx# Thiết kế phân tầng, luồng dữ liệu, ADR01-ADR06
+│   ├── 03_CONG_NGHE_VA_CONG_CU_PHAT_TRIEN.docx        # Đánh giá nền tảng, ma trận phần cứng và giấy phép
+│   ├── 04_THIET_KE_DU_LIEU_API_VA_AI.docx             # Hợp đồng ảnh Float32, lược đồ job và vòng đời AI
+│   └── 05_KE_HOACH_TRIEN_KHAI_KIEM_THU_VAN_HANH.docx  # Kế hoạch bàn giao, chiến lược test và ngân sách
 │
-└── 03_THUONG_HIEU_VA_THIET_KE_LOGO_KROMA/
-    ├── 06_THUYET_MINH_THUONG_HIEU_VA_LOGO_KROMA.docx     # Thuyết minh triết lý thiết kế & ngữ nghĩa học
-    ├── Assets_Vector_SVG/                                # Trọn bộ 5 định dạng Vector SVG chuẩn quốc tế
-    │   ├── kroma-logo-horizontal.svg                     # Logo ngang chính thức
-    │   ├── kroma-logo-stacked.svg                        # Logo khối vuông
-    │   ├── kroma-icon.svg                                # Biểu tượng Favicon
-    │   ├── kroma-app-icon.svg                            # App badge bo góc
-    │   └── kroma-logo-monochrome.svg                     # Bản đơn sắc đen in ấn
+├── 02_CHIEN_LUOC_SAN_PHAM_VA_DE_XUAT_TOI_UU/          # Đánh giá chiến lược nền tảng và lộ trình MVP
+│   └── 07_BAO_CAO_DANH_GIA_VA_DE_XUAT_TOI_UU_KROMA.docx
+│
+└── 03_THUONG_HIEU_VA_THIET_KE_LOGO_KROMA/             # Hệ thống nhận diện thương hiệu Kroma
+    ├── 06_THUYET_MINH_THUONG_HIEU_VA_LOGO_KROMA.docx  # Thuyết minh ý niệm hình học và ngữ nghĩa học
+    ├── Assets_Vector_SVG/                             # Bộ tệp vector SVG tỷ lệ chuẩn
+    │   ├── kroma-logo-horizontal.svg                  # Biến thể ngang chính thức
+    │   ├── kroma-logo-stacked.svg                     # Biến thể khối vuông
+    │   ├── kroma-icon.svg                             # Biểu tượng Favicon
+    │   ├── kroma-app-icon.svg                         # Biểu tượng ứng dụng bo góc
+    │   └── kroma-logo-monochrome.svg                  # Biến thể đơn sắc đen in ấn
     └── Showcase_Hinh_Anh/
-        ├── kroma_logo_presentation.jpg                   # Bản render phối cảnh 1376x768
-        └── index.html                                    # Trang Web Brand Showcase tương tác trực tiếp
+        ├── kroma_logo_presentation.jpg                # Bản kết xuất độ phân giải cao 1376 × 768 px
+        └── index.html                                 # Bảng hiển thị thông số và tải tài nguyên
 ```
 
 ---
 
-## 📅 LỘ TRÌNH TRIỂN KHAI MVP (60 NGÀY)
+### 6. Kế hoạch triển khai kỹ thuật
 
 ```mermaid
 gantt
-    title KROMA - Lộ Trình Phát Triển & Ra Mắt MVP
+    title Kroma - Kế hoạch triển khai kỹ thuật 60 ngày
     dateFormat  YYYY-MM-DD
-    section Giai đoạn 1: Nền tảng Web
-    Khởi tạo Web Next.js 15 & Canvas Engine :2026-12-01, 14d
+    section Giai đoạn 1: Khung ứng dụng
+    Khởi tạo Next.js 15 & Canvas Engine       :active, 2026-12-01, 14d
     section Giai đoạn 2: Tích hợp AI
-    Client-side AI (ONNX Web / WebGPU)      :2026-12-15, 14d
-    Công cụ tinh chỉnh viền (Refine Mask)   :2026-12-22, 10d
-    section Giai đoạn 3: Tính năng Sàn
-    AI Auto Shadow (Đổ bóng tự nhiên)       :2026-12-29, 10d
-    Preset chuẩn Shopee, TikTok, Amazon     :2027-01-05, 10d
-    section Giai đoạn 4: Thương mại hóa
-    Xuất hàng loạt ZIP & Cổng thanh toán    :2027-01-15, 10d
-    Thử nghiệm Closed Beta (10 shop)        :2027-01-22, 7d
-    Chính thức mở bán thương mại            :2027-01-29, 3d
+    Client-side ONNX Web & WebGPU             :2026-12-15, 14d
+    Công cụ hoàn thiện mặt nạ (Refine Mask)   :2026-12-22, 10d
+    section Giai đoạn 3: Tính năng sàn TMĐT
+    Bộ tạo bóng vật lý (Physical Shadow)     :2026-12-29, 10d
+    Mẫu chuẩn tỷ lệ Shopee, TikTok, Amazon    :2027-01-05, 10d
+    section Giai đoạn 4: Vận hành & Phát hành
+    Module xuất lô ZIP & Cổng thanh toán      :2027-01-15, 10d
+    Kiểm thử nghiệm thu Pilot (10 cửa hàng)   :2027-01-22, 7d
+    Phát hành phiên bản thương mại            :2027-01-29, 3d
 ```
 
 ---
 
-## 👤 BẢN QUYỀN & TÁC GIẢ
+### 7. Giấy phép và liên hệ
 
-*   **Chủ sở hữu & Nhà phát triển:** [JiaysTM17](https://github.com/JiaysTM17)
-*   **Dự án:** KROMA Intelligent Image Studio
-*   **Bản quyền:** © 2026 KROMA. Toàn bộ tài liệu thiết kế và nhãn hiệu đã được đăng ký và bảo hộ.
+- **Tác giả & Chủ sở hữu dự án:** [JiaysTM17](https://github.com/JiaysTM17)
+- **Bản quyền:** © 2026 Kroma. Toàn bộ thiết kế nhãn hiệu và tài liệu kiến trúc được bảo lưu quyền tác giả.

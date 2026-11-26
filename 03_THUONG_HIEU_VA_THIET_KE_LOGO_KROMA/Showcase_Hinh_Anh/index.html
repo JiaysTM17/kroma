@@ -3,165 +3,253 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kroma — Hệ Thống Nhận Diện Thương Hiệu & Logo Chuẩn</title>
+  <title>Kroma — Hệ thống nhận diện thương hiệu</title>
   <style>
     :root {
-      --bg: #F8FAFC;
-      --card-bg: #FFFFFF;
-      --text-main: #0F172A;
-      --text-muted: #64748B;
-      --border: #E2E8F0;
-      --primary: #4F46E5;
-      --cyan: #06B6D4;
-      --coral: #F43F5E;
+      --bg: #FAFAFA;
+      --surface: #FFFFFF;
+      --surface-raised: #F4F4F5;
+      --border: #E5E5E5;
+      --border-subtle: #EEEEEE;
+      --text-primary: #171717;
+      --text-secondary: #525252;
+      --text-muted: #737373;
+      --accent: #4F46E5;
+      --radius-card: 12px;
+      --radius-inner: 8px;
+      --radius-control: 6px;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: var(--bg);
-      color: var(--text-main);
-      line-height: 1.6;
-      padding: 40px 20px;
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 48px 24px;
+      -webkit-font-smoothing: antialiased;
     }
+
     .container {
-      max-width: 1100px;
+      max-width: 1040px;
       margin: 0 auto;
     }
+
     header {
       margin-bottom: 40px;
-      text-align: center;
     }
-    .badge {
-      display: inline-block;
-      padding: 6px 14px;
-      background: #EEF2FF;
-      color: var(--primary);
-      font-size: 13px;
-      font-weight: 700;
-      border-radius: 999px;
-      letter-spacing: 1px;
+
+    .meta-tag {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
       text-transform: uppercase;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
+      display: inline-block;
     }
+
     h1 {
-      font-size: 38px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
       margin-bottom: 8px;
     }
+
     p.lead {
-      font-size: 17px;
-      color: var(--text-muted);
-      max-width: 650px;
-      margin: 0 auto;
+      font-size: 15px;
+      color: var(--text-secondary);
+      max-width: 640px;
     }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
-      margin-bottom: 40px;
+      gap: 20px;
+      margin-bottom: 32px;
     }
+
     .card {
-      background: var(--card-bg);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+      border-radius: var(--radius-card);
+      padding: 24px;
       display: flex;
       flex-direction: column;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
+
     .card.full-width {
       grid-column: 1 / -1;
     }
-    .card-title {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 16px;
+
+    .card-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: baseline;
+      margin-bottom: 16px;
     }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
     .logo-stage {
       background: #FFFFFF;
-      border: 1px solid #EDF2F7;
-      border-radius: 12px;
-      padding: 30px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-inner);
+      padding: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 220px;
+      min-height: 200px;
       margin-bottom: 16px;
     }
+
     .logo-stage img, .logo-stage svg {
       max-width: 100%;
       height: auto;
     }
+
     .btn-group {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       margin-top: auto;
     }
+
     .btn {
-      flex: 1;
-      padding: 10px 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      height: 36px;
       font-size: 13px;
-      font-weight: 600;
-      text-align: center;
-      border-radius: 8px;
+      font-weight: 500;
+      border-radius: var(--radius-control);
       text-decoration: none;
       cursor: pointer;
       border: 1px solid var(--border);
-      background: #FFFFFF;
-      color: var(--text-main);
-      transition: all 0.2s;
+      background: var(--surface);
+      color: var(--text-primary);
+      transition: background-color 140ms cubic-bezier(0.22, 1, 0.36, 1), border-color 140ms cubic-bezier(0.22, 1, 0.36, 1);
     }
+
     .btn:hover {
-      background: #F1F5F9;
-      border-color: #CBD5E1;
+      background: var(--surface-raised);
+      border-color: #D4D4D8;
     }
+
     .btn-primary {
-      background: var(--text-main);
+      background: var(--text-primary);
       color: #FFFFFF;
-      border-color: var(--text-main);
+      border-color: var(--text-primary);
     }
+
     .btn-primary:hover {
-      background: #1E293B;
+      background: #27272A;
+      border-color: #27272A;
     }
+
     .palette-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
       margin-top: 16px;
     }
+
     .color-swatch {
-      border-radius: 12px;
+      border-radius: var(--radius-inner);
       overflow: hidden;
       border: 1px solid var(--border);
-      background: #FFF;
+      background: var(--surface);
     }
+
     .color-preview {
-      height: 80px;
+      height: 64px;
       width: 100%;
     }
+
     .color-info {
       padding: 12px;
     }
-    .color-name { font-weight: 700; font-size: 14px; }
-    .color-hex { font-family: monospace; font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+    .color-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .color-hex {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .story-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .story-item {
+      background: var(--surface-raised);
+      padding: 16px;
+      border-radius: var(--radius-inner);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .story-item h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .story-item p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
     .guidelines-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 16px;
-      font-size: 14px;
+      font-size: 13px;
     }
+
     .guidelines-table th, .guidelines-table td {
       padding: 12px 16px;
       text-align: left;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-subtle);
     }
+
     .guidelines-table th {
-      background: #F8FAFC;
-      font-weight: 700;
+      background: var(--surface-raised);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .guidelines-table td {
+      color: var(--text-secondary);
+    }
+
+    .guidelines-table td strong {
+      color: var(--text-primary);
     }
   </style>
 </head>
@@ -169,89 +257,76 @@
 
 <div class="container">
   <header>
-    <div class="badge">Official Brand Asset</div>
-    <h1>KROMA</h1>
-    <p class="lead">Hệ thống nhận diện thương hiệu chuẩn cho nền tảng web xử lý ảnh thông minh.</p>
+    <span class="meta-tag">Hệ thống nhận diện thương hiệu</span>
+    <h1>Kroma</h1>
+    <p class="lead">Bộ tiêu chuẩn định dạng hình ảnh và biểu trưng quang học cho studio xử lý ảnh thương mại điện tử.</p>
   </header>
 
   <div class="grid">
     <!-- Card 1: Horizontal Lockup (Primary) -->
     <div class="card full-width">
-      <div class="card-title">
-        <span>01. Logo Chính Thức (Horizontal Lockup — Nền Trắng Chuẩn)</span>
-        <span style="font-size: 12px; color: var(--text-muted);">Khuyên dùng cho Header Website, Navbar, Báo cáo</span>
+      <div class="card-header">
+        <span class="card-title">1. Biểu trưng ngang chính thức (Horizontal lockup)</span>
+        <span class="card-subtitle">Ứng dụng cho thanh điều hướng, tiêu đề ứng dụng và báo cáo</span>
       </div>
       <div class="logo-stage">
-        <img src="../Assets_Vector_SVG/kroma-logo-horizontal.svg" alt="Kroma Logo Horizontal" style="max-height: 140px;">
+        <img src="../Assets_Vector_SVG/kroma-logo-horizontal.svg" alt="Kroma Logo Horizontal" style="max-height: 120px;">
       </div>
       <div class="btn-group">
-        <a class="btn btn-primary" href="../Assets_Vector_SVG/kroma-logo-horizontal.svg" download>Tải Vector SVG (Nền Trắng)</a>
-        <a class="btn" href="kroma_logo_presentation.jpg" target="_blank">Xem Bản Render Chất Lượng Cao</a>
+        <a class="btn btn-primary" href="../Assets_Vector_SVG/kroma-logo-horizontal.svg" download>Tải tệp SVG</a>
+        <a class="btn" href="kroma_logo_presentation.jpg" target="_blank">Xem bản kết xuất 1376px</a>
       </div>
     </div>
 
-    <!-- Card 2: Presentation Render -->
+    <!-- Card 2: Stacked Lockup -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">2. Biến thể khối (Stacked lockup)</span>
+        <span class="card-subtitle">Màn hình khởi động và thẻ danh mục</span>
+      </div>
+      <div class="logo-stage">
+        <img src="../Assets_Vector_SVG/kroma-logo-stacked.svg" alt="Kroma Logo Stacked" style="max-height: 180px;">
+      </div>
+      <div class="btn-group">
+        <a class="btn btn-primary" href="../Assets_Vector_SVG/kroma-logo-stacked.svg" download>Tải tệp SVG</a>
+      </div>
+    </div>
+
+    <!-- Card 3: App Icon / Favicon -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">3. Biểu tượng ứng dụng (App icon)</span>
+        <span class="card-subtitle">Favicon và biểu tượng góc bo</span>
+      </div>
+      <div class="logo-stage">
+        <img src="../Assets_Vector_SVG/kroma-app-icon.svg" alt="Kroma App Icon" style="max-height: 150px;">
+      </div>
+      <div class="btn-group">
+        <a class="btn btn-primary" href="../Assets_Vector_SVG/kroma-app-icon.svg" download>Tải tệp SVG bo góc</a>
+        <a class="btn" href="../Assets_Vector_SVG/kroma-icon.svg" download>Tải biểu tượng phẳng</a>
+      </div>
+    </div>
+
+    <!-- Card 4: Monochrome Black -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">4. Biến thể đơn sắc (Monochrome)</span>
+        <span class="card-subtitle">In ấn tài liệu và hóa đơn</span>
+      </div>
+      <div class="logo-stage">
+        <img src="../Assets_Vector_SVG/kroma-logo-monochrome.svg" alt="Kroma Logo Monochrome" style="max-height: 100px;">
+      </div>
+      <div class="btn-group">
+        <a class="btn btn-primary" href="../Assets_Vector_SVG/kroma-logo-monochrome.svg" download>Tải tệp SVG đơn sắc</a>
+      </div>
+    </div>
+
+    <!-- Card 5: Brand Color Palette -->
     <div class="card full-width">
-      <div class="card-title">
-        <span>02. Bản Phối Cảnh Đồ Họa Cao Cấp (High-Res Presentation)</span>
-        <span style="font-size: 12px; color: var(--text-muted);">Độ phân giải 1376 x 768 px</span>
+      <div class="card-header">
+        <span class="card-title">5. Bảng màu quang phổ chuẩn (Brand color palette)</span>
+        <span class="card-subtitle">Các sắc độ chuẩn hóa cho giao diện và hệ thống nhận diện</span>
       </div>
-      <div class="logo-stage" style="padding: 10px;">
-        <img src="kroma_logo_presentation.jpg" alt="Kroma Presentation" style="border-radius: 8px; max-height: 380px;">
-      </div>
-      <div class="btn-group">
-        <a class="btn btn-primary" href="kroma_logo_presentation.jpg" download>Tải Ảnh JPG Gốc</a>
-      </div>
-    </div>
-
-    <!-- Card 3: Stacked Lockup -->
-    <div class="card">
-      <div class="card-title">
-        <span>03. Logo Dạng Khối (Stacked)</span>
-      </div>
-      <div class="logo-stage">
-        <img src="../Assets_Vector_SVG/kroma-logo-stacked.svg" alt="Kroma Logo Stacked" style="max-height: 220px;">
-      </div>
-      <div class="btn-group">
-        <a class="btn btn-primary" href="../Assets_Vector_SVG/kroma-logo-stacked.svg" download>Tải SVG Stacked</a>
-      </div>
-    </div>
-
-    <!-- Card 4: App Icon / Favicon -->
-    <div class="card">
-      <div class="card-title">
-        <span>04. App Icon & Favicon</span>
-      </div>
-      <div class="logo-stage">
-        <img src="../Assets_Vector_SVG/kroma-app-icon.svg" alt="Kroma App Icon" style="max-height: 180px;">
-      </div>
-      <div class="btn-group">
-        <a class="btn btn-primary" href="../Assets_Vector_SVG/kroma-app-icon.svg" download>Tải SVG App Icon</a>
-        <a class="btn" href="../Assets_Vector_SVG/kroma-icon.svg" download>Tải Biểu Tượng Flat</a>
-      </div>
-    </div>
-
-    <!-- Card 5: Monochrome Black -->
-    <div class="card">
-      <div class="card-title">
-        <span>05. Biến Thể Đơn Sắc (Monochrome Black)</span>
-      </div>
-      <div class="logo-stage">
-        <img src="../Assets_Vector_SVG/kroma-logo-monochrome.svg" alt="Kroma Logo Monochrome" style="max-height: 120px;">
-      </div>
-      <div class="btn-group">
-        <a class="btn btn-primary" href="../Assets_Vector_SVG/kroma-logo-monochrome.svg" download>Tải SVG Đơn Sắc</a>
-      </div>
-    </div>
-
-    <!-- Card 6: Brand Color Palette -->
-    <div class="card full-width">
-      <div class="card-title">
-        <span>06. Bảng Màu Nhận Diện Chuẩn (Brand Chromatic Palette)</span>
-      </div>
-      <p style="font-size: 14px; color: var(--text-muted);">
-        Hệ màu Chromatic Prism biểu trưng cho dải quang phổ ánh sáng, sự tươi sáng và tính toán thuật toán màu chuẩn xác:
-      </p>
       <div class="palette-grid">
         <div class="color-swatch">
           <div class="color-preview" style="background: #4F46E5;"></div>
@@ -291,66 +366,58 @@
       </div>
     </div>
 
-    <!-- Card 7: Brand Story & Word Document Download -->
+    <!-- Card 6: Brand Semiotics & Story -->
     <div class="card full-width">
-      <div class="card-title">
-        <span>07. Bản Thuyết Minh Ý Tưởng & Ý Nghĩa Sâu Xa (Brand Semiotics & Story)</span>
-        <a class="btn btn-primary" style="padding: 6px 14px; font-size: 13px;" href="../06_THUYET_MINH_THUONG_HIEU_VA_LOGO_KROMA.docx" download>Tải Bản Thuyết Minh Word (.DOCX)</a>
+      <div class="card-header">
+        <span class="card-title">6. Cấu trúc hình học và ý niệm thương hiệu</span>
+        <a class="btn" style="height: 32px; font-size: 12px;" href="../06_THUYET_MINH_THUONG_HIEU_VA_LOGO_KROMA.docx" download>Tải thuyết minh Word (.docx)</a>
       </div>
-      <div style="font-size: 14px; color: var(--text-main); display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 10px;">
-        <div style="background: #F8FAFC; padding: 18px; border-radius: 10px; border-left: 4px solid var(--primary);">
-          <h4 style="margin-bottom: 6px; color: var(--primary);">1. Nguồn Gốc Tên Gọi KROMA</h4>
-          <p style="color: #475569; font-size: 13.5px;">
-            Xuất phát từ <em>Khroma (χρῶμα)</em> tiếng Hy Lạp cổ và thuật ngữ <strong>Chroma</strong> trong hệ màu quang học — chỉ số thể hiện <strong>độ thuần khiết, rực rỡ và bão hòa tuyệt đối của màu sắc</strong>. Thay thế "Ch" bằng "K" tạo âm bật cứng dứt khoát, gia tăng tính sở hữu trí tuệ và phong cách công nghệ cao.
-          </p>
+      <div class="story-grid">
+        <div class="story-item">
+          <h4>Nguồn gốc tên gọi</h4>
+          <p>Xuất phát từ <em>Chroma</em> trong khoa học màu sắc — chỉ số thể hiện độ thuần khiết và bão hòa sắc độ. Chữ K thay thế tạo âm bật dứt khoát và tính nhận diện công nghệ cao.</p>
         </div>
-        <div style="background: #F8FAFC; padding: 18px; border-radius: 10px; border-left: 4px solid var(--cyan);">
-          <h4 style="margin-bottom: 6px; color: var(--cyan);">2. Cột Trụ Canvas Vững Chãi</h4>
-          <p style="color: #475569; font-size: 13.5px;">
-            Thanh dọc nguyên khối đại diện cho <strong>ảnh gốc (Raw Source)</strong> và triết lý <strong>chỉnh sửa không phá hủy (Non-destructive)</strong>. Nền tảng đảm bảo dữ liệu gốc luôn được bảo toàn toàn vẹn dù trải qua hàng trăm lượt biến đổi.
-          </p>
+        <div class="story-item">
+          <h4>Trục Canvas vững chãi</h4>
+          <p>Thanh dọc nguyên khối đại diện cho tệp ảnh nguồn và triết lý chỉnh sửa không phá hủy, bảo toàn toàn vẹn dữ liệu qua mọi bước biến đổi.</p>
         </div>
-        <div style="background: #F8FAFC; padding: 18px; border-radius: 10px; border-left: 4px solid var(--coral);">
-          <h4 style="margin-bottom: 6px; color: var(--coral);">3. Dải Quang Phổ & Bóc Tách Layer</h4>
-          <p style="color: #475569; font-size: 13.5px;">
-            Hai dải chéo cấu thành chữ K: Dải trên vươn lên đại diện cho <strong>AI Enhancement & Sáng tạo</strong>; Dải dưới vát xuống đại diện cho <strong>Bóc tách nền, Masking và đổ bóng tự nhiên</strong> cho thương mại điện tử.
-          </p>
+        <div class="story-item">
+          <h4>Dải quang phổ kép</h4>
+          <p>Hai dải chéo cấu thành chữ K: Dải trên đại diện cho năng lực tăng cường hình ảnh bằng AI; dải dưới đại diện cho kỹ thuật bóc tách lớp và đổ bóng vật lý.</p>
         </div>
-        <div style="background: #F8FAFC; padding: 18px; border-radius: 10px; border-left: 4px solid #FACC15;">
-          <h4 style="margin-bottom: 6px; color: #D97706;">4. Tâm Điểm Lăng Kính (Prism Core)</h4>
-          <p style="color: #475569; font-size: 13.5px;">
-            Lăng kính tam giác và điểm sáng khẩu độ quang học ở trung tâm là nơi hội tụ của thuật toán xử lý ảnh hàng loạt (Batch Processing) — chuyển hóa ảnh thô thành tuyệt phẩm chuẩn sàn chỉ trong 1 chạm.
-          </p>
+        <div class="story-item">
+          <h4>Lõi lăng kính hội tụ</h4>
+          <p>Khẩu độ quang học trung tâm đại diện cho bộ xử lý hàng loạt, chuẩn hóa đồng nhất hàng trăm ảnh sản phẩm cho các kênh bán hàng.</p>
         </div>
       </div>
     </div>
 
-    <!-- Card 8: Specifications -->
+    <!-- Card 7: Technical Specifications -->
     <div class="card full-width">
-      <div class="card-title">
-        <span>08. Quy Chuẩn Kỹ Thuật (Technical Specifications)</span>
+      <div class="card-header">
+        <span class="card-title">7. Quy chuẩn hiển thị</span>
       </div>
       <table class="guidelines-table">
-        <tr>
-          <th style="width: 25%;">Hạng mục</th>
-          <th>Quy định tiêu chuẩn</th>
-        </tr>
-        <tr>
-          <td><strong>Ý niệm thiết kế</strong></td>
-          <td>Chữ <strong>K</strong> cách điệu cấu thành từ cột chuẩn mực (Canvas baseline) và 2 dải quang phổ đan chéo (Chroma Prism) tượng trưng cho bóc tách layer, khúc xạ ánh sáng và xử lý ảnh AI chuẩn xác.</td>
-        </tr>
-        <tr>
-          <td><strong>Khoảng trống an toàn (Clear space)</strong></td>
-          <td>Luôn duy trì khoảng cách tối thiểu bằng 1/2 chiều cao biểu tượng K xung quanh logo để tránh bị dính sát vào các thành phần UI khác.</td>
-        </tr>
-        <tr>
-          <td><strong>Kích thước hiển thị tối thiểu</strong></td>
-          <td>Digital: tối thiểu 28px chiều cao cho bản ngang có chữ; tối thiểu 16px cho favicon/biểu tượng độc lập.</td>
-        </tr>
-        <tr>
-          <td><strong>Typography chuẩn</strong></td>
-          <td>Font hình học (Geometric Sans-serif) hiện đại như Inter, Plus Jakarta Sans, hoặc SF Pro Display với tracking rộng và độ tương phản cao.</td>
-        </tr>
+        <thead>
+          <tr>
+            <th style="width: 28%;">Hạng mục</th>
+            <th>Tiêu chuẩn kỹ thuật</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Khoảng trống an toàn</strong></td>
+            <td>Duy trì khoảng đệm tối thiểu bằng 1/2 chiều cao biểu tượng K xung quanh logo, tránh đặt sát các thành phần đồ họa khác.</td>
+          </tr>
+          <tr>
+            <td><strong>Kích thước tối thiểu</strong></td>
+            <td>Môi trường kỹ thuật số: Tối thiểu 28px chiều cao cho bản ngang có chữ; tối thiểu 16px cho biểu tượng Favicon.</td>
+          </tr>
+          <tr>
+            <td><strong>Phông chữ hệ thống</strong></td>
+            <td>Sử dụng phông chữ hình học trung tính (Inter, Geist, SF Pro Display) với tỷ lệ trọng số 400 đến 600.</td>
+          </tr>
+        </tbody>
       </table>
     </div>
   </div>
