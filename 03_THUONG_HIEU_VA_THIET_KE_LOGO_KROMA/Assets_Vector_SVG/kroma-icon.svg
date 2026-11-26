@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="100%" height="100%">
+  <defs>
+    <linearGradient id="kroma-icon-stem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+
+    <linearGradient id="kroma-icon-arm-top" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+
+    <linearGradient id="kroma-icon-arm-bottom" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="60%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+
+    <linearGradient id="kroma-icon-prism-core" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E" />
+      <stop offset="50%" stop-color="#FB923C" />
+      <stop offset="100%" stop-color="#FACC15" />
+    </linearGradient>
+
+    <filter id="kroma-icon-shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#4F46E5" flood-opacity="0.16" />
+    </filter>
+  </defs>
+
+  <!-- Pure White Background -->
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+
+  <!-- Centered Icon Mark -->
+  <g transform="translate(54, 48)" filter="url(#kroma-icon-shadow)">
+    <!-- Vertical Pillar -->
+    <path d="M 24 16 C 24 7.16 31.16 0 40 0 L 52 0 C 60.84 0 68 7.16 68 16 L 68 144 C 68 152.84 60.84 160 52 160 L 40 160 C 31.16 160 24 152.84 24 144 Z" 
+          fill="url(#kroma-icon-stem)" />
+
+    <!-- Upper Chromatic Beam -->
+    <path d="M 72 74 C 70 70 73 64 78 61 L 138 22 C 145 18 154 23 154 31 L 154 44 C 154 50 150 56 144 60 L 92 94 C 85 98 76 94 74 86 Z" 
+          fill="url(#kroma-icon-arm-top)" />
+
+    <!-- Lower Precision Beam -->
+    <path d="M 74 76 C 76 68 85 64 92 68 L 144 102 C 150 106 154 112 154 118 L 154 131 C 154 139 145 144 138 140 L 78 101 C 73 98 70 92 72 88 Z" 
+          fill="url(#kroma-icon-arm-bottom)" />
+
+    <!-- Chromatic Prism Center -->
+    <path d="M 68 62 L 96 81 L 68 100 Z" 
+          fill="url(#kroma-icon-prism-core)" 
+          opacity="0.95" />
+          
+    <!-- Precision Lens Focal Point -->
+    <circle cx="96" cy="81" r="5.5" fill="#FFFFFF" opacity="0.95" />
+  </g>
+</svg>

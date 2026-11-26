@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="kroma-s-stem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+
+    <linearGradient id="kroma-s-arm-top" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="50%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#EC4899" />
+    </linearGradient>
+
+    <linearGradient id="kroma-s-arm-bottom" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="60%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+
+    <linearGradient id="kroma-s-prism-core" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E" />
+      <stop offset="50%" stop-color="#FB923C" />
+      <stop offset="100%" stop-color="#FACC15" />
+    </linearGradient>
+
+    <filter id="kroma-s-shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#4F46E5" flood-opacity="0.16" />
+    </filter>
+  </defs>
+
+  <!-- Pure White Background -->
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+
+  <!-- Centered Icon Mark -->
+  <g transform="translate(176, 70)" filter="url(#kroma-s-shadow)">
+    <!-- Vertical Pillar -->
+    <path d="M 24 16 C 24 7.16 31.16 0 40 0 L 52 0 C 60.84 0 68 7.16 68 16 L 68 144 C 68 152.84 60.84 160 52 160 L 40 160 C 31.16 160 24 152.84 24 144 Z" 
+          fill="url(#kroma-s-stem)" />
+
+    <!-- Upper Chromatic Beam -->
+    <path d="M 72 74 C 70 70 73 64 78 61 L 138 22 C 145 18 154 23 154 31 L 154 44 C 154 50 150 56 144 60 L 92 94 C 85 98 76 94 74 86 Z" 
+          fill="url(#kroma-s-arm-top)" />
+
+    <!-- Lower Precision Beam -->
+    <path d="M 74 76 C 76 68 85 64 92 68 L 144 102 C 150 106 154 112 154 118 L 154 131 C 154 139 145 144 138 140 L 78 101 C 73 98 70 92 72 88 Z" 
+          fill="url(#kroma-s-arm-bottom)" />
+
+    <!-- Chromatic Prism Center -->
+    <path d="M 68 62 L 96 81 L 68 100 Z" 
+          fill="url(#kroma-s-prism-core)" 
+          opacity="0.95" />
+          
+    <circle cx="96" cy="81" r="5" fill="#FFFFFF" opacity="0.95" />
+  </g>
+
+  <!-- Centered Typography KROMA -->
+  <g transform="translate(250, 340)">
+    <!-- Group centered at x=0 -->
+    <g transform="translate(-221, 0)">
+      <!-- K -->
+      <path d="M 0 10 L 0 -68 L 16 -68 L 16 -37 L 46 -68 L 68 -68 L 31 -30 L 70 10 L 48 10 L 16 -23 L 16 10 Z" fill="#0F172A" />
+
+      <!-- R -->
+      <path d="M 82 10 L 82 -68 L 118 -68 C 137 -68 148 -58 148 -43 C 148 -31 140 -23 128 -20 L 152 10 L 131 10 L 110 -18 L 98 -18 L 98 10 Z M 98 -32 L 116 -32 C 126 -32 132 -37 132 -43 C 132 -50 126 -54 116 -54 L 98 -54 Z" fill="#0F172A" />
+
+      <!-- O (optical kerning tuned) -->
+      <path d="M 205 -29 C 205 -53 188 -70 163 -70 C 138 -70 121 -53 121 -29 C 121 -5 138 12 163 12 C 188 12 205 -5 205 -29 Z M 138 -29 C 138 -45 149 -56 163 -56 C 177 -56 188 -45 188 -29 C 188 -13 177 -2 163 -2 C 149 -2 138 -13 138 -29 Z" transform="translate(43, 0)" fill="#0F172A" />
+
+      <!-- M (optical kerning tuned) -->
+      <path d="M 262 10 L 262 -68 L 281 -68 L 302 -20 L 323 -68 L 342 -68 L 342 10 L 326 10 L 326 -40 L 309 0 L 295 0 L 278 -40 L 278 10 Z" transform="translate(-2, 0)" fill="#0F172A" />
+
+      <!-- A (optical kerning tuned) -->
+      <path d="M 426 10 L 418 -10 L 388 -10 L 380 10 L 363 10 L 395 -68 L 412 -68 L 444 10 Z M 403 -48 L 393 -24 L 413 -24 Z" transform="translate(-11, 0)" fill="#0F172A" />
+
+      <!-- Dot Accent -->
+      <circle cx="442" cy="-60" r="4.5" fill="#06B6D4" />
+    </g>
+  </g>
+
+  <!-- Subtitle -->
+  <text x="250" y="385" 
+        text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+        font-size="12" 
+        font-weight="600" 
+        letter-spacing="5" 
+        fill="#64748B">
+    INTELLIGENT IMAGE STUDIO
+  </text>
+</svg>

@@ -1,0 +1,27 @@
+# Microsoft Word / Office temporary lock files
+~$*.docx
+~$*.doc
+~$*.xlsx
+~$*.pptx
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+.Spotlight-V100
+.Trashes
+
+# Editor & IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python cache (if any scripts run)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
