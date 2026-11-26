@@ -145,7 +145,24 @@ kroma/
 ├── README.md                                          # Tài liệu tổng quan dự án
 ├── .gitignore                                         # Cấu hình loại trừ tệp tạm hệ thống và Office
 │
-├── 01_HO_SO_THIET_KE_HE_THONG/                        # Hồ sơ đặc tả kỹ thuật và nghiệp vụ
+├── frontend/                                          # Giao diện Studio Next.js 15 & React 19
+│   ├── src/app/                                       # App Router: Studio chính và Cổng Proofing khách
+│   ├── src/components/                                # Workspace Canvas, Toolbar, Presets, Shadow & Adjustments
+│   ├── src/lib/                                       # Float32 Color Pipeline, Physical Shadow & Types
+│   ├── public/assets/logo/                            # Vector SVG Logo chuẩn hiển thị
+│   ├── package.json                                   # Cấu hình phụ thuộc và scripts Next.js
+│   └── tailwind.config.ts                             # Bảng màu sắc & lưới chuẩn craft design
+│
+├── backend/                                           # Máy chủ cục bộ FastAPI & SQLite Clean Architecture
+│   ├── app/main.py                                    # Điểm khởi chạy API và middleware
+│   ├── app/api/v1/                                    # Tuyến API v1: Projects, Assets, Presets, Health
+│   ├── app/routers/                                   # Proofing link và Export ZIP service
+│   ├── app/domain/                                    # Mô hình nghiệp vụ thuần túy (Domain Purity)
+│   ├── app/storage/                                   # Triển khai SQLite WAL và Local FS Blob Store
+│   ├── pyproject.toml                                 # Cấu hình gói và pytest runner
+│   └── tests/                                         # 21 bài kiểm thử tự động (100% Passing)
+│
+├── 01_HO_SO_THIET_KE_HE_THONG/                        # Hồ sơ đặc tả kỹ thuật và nghiệp vụ (.docx)
 │   ├── 00_DANH_MUC_HO_SO_VA_HUONG_DAN_IN.docx         # Danh mục tổng hợp và quy cách xuất bản
 │   ├── 01_PHAN_TICH_NGHIEP_VU_VA_YEU_CAU_SAN_PHAM.docx# 30 nhóm chức năng, 14 use cases, 48 tiêu chuẩn CX
 │   ├── 02_KIEN_TRUC_HE_THONG_VA_CAU_TRUC_MA_NGUON.docx# Thiết kế phân tầng, luồng dữ liệu, ADR01-ADR06
@@ -153,12 +170,12 @@ kroma/
 │   ├── 04_THIET_KE_DU_LIEU_API_VA_AI.docx             # Hợp đồng ảnh Float32, lược đồ job và vòng đời AI
 │   └── 05_KE_HOACH_TRIEN_KHAI_KIEM_THU_VAN_HANH.docx  # Kế hoạch bàn giao, chiến lược test và ngân sách
 │
-├── 02_CHIEN_LUOC_SAN_PHAM_VA_DE_XUAT_TOI_UU/          # Đánh giá chiến lược nền tảng và lộ trình MVP
+├── 02_CHIEN_LUOC_SAN_PHAM_VA_DE_XUAT_TOI_UU/          # Đánh giá chiến lược nền tảng và lộ trình MVP (.docx)
 │   └── 07_BAO_CAO_DANH_GIA_VA_DE_XUAT_TOI_UU_KROMA.docx
 │
 └── 03_THUONG_HIEU_VA_THIET_KE_LOGO_KROMA/             # Hệ thống nhận diện thương hiệu Kroma
-    ├── 06_THUYET_MINH_THUONG_HIEU_VA_LOGO_KROMA.docx  # Thuyết minh ý niệm hình học và ngữ nghĩa học
-    ├── Assets_Vector_SVG/                             # Bộ tệp vector SVG tỷ lệ chuẩn
+    ├── 06_THUYET_MINH_THUONG_HIEU_VA_LOGO_KROMA.docx  # Thuyết minh ý niệm hình học và ngữ nghĩa học (.docx)
+    ├── Assets_Vector_SVG/                             # Bộ tệp vector SVG tỷ lệ chuẩn (Optical Kerning chuẩn)
     │   ├── kroma-logo-horizontal.svg                  # Biến thể ngang chính thức
     │   ├── kroma-logo-stacked.svg                     # Biến thể khối vuông
     │   ├── kroma-icon.svg                             # Biểu tượng Favicon
@@ -168,6 +185,41 @@ kroma/
         ├── kroma_logo_presentation.jpg                # Bản kết xuất độ phân giải cao 1376 × 768 px
         └── index.html                                 # Bảng hiển thị thông số và tải tài nguyên
 ```
+
+---
+
+### 5.1 Hướng dẫn cài đặt và vận hành (Quickstart)
+
+#### Khởi chạy Backend (FastAPI & SQLite)
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Trên Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Chạy toàn bộ 21 test tự động
+pytest -v
+
+# Chạy máy chủ phát triển tại cổng 8000
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+#### Khởi chạy Frontend (Next.js 15 & React 19)
+```bash
+cd frontend
+npm install
+
+# Kiểm tra bản đóng gói sản phẩm
+npm run build
+
+# Chạy máy chủ giao diện tại cổng 3000
+npm run dev
+```
+
+Mở trình duyệt truy cập:
+- Studio Image Suite: `http://localhost:3000`
+- API Swagger Docs: `http://localhost:8000/docs`
+- Cổng duyệt khách hàng (Proofing): `http://localhost:3000/proof/demo`
 
 ---
 
