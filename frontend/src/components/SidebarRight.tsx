@@ -114,15 +114,21 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
       )}
 
       {/* 6-Tab Navigation Bar */}
-      <div className="flex items-center overflow-x-auto border-b border-surface-border bg-surface-subtle">
+      <div
+        role="tablist"
+        aria-label={t.toggle_inspector_panel}
+        className="grid grid-cols-3 border-b border-surface-border bg-surface-subtle shrink-0"
+      >
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={active}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-0 py-3 px-1 text-center text-xs whitespace-nowrap border-b-2 transition-colors ${
+              className={`py-2 px-2 text-center text-xs whitespace-nowrap border-b-2 transition-colors ${
                 active
                   ? 'border-kroma-600 text-zinc-900 bg-surface-light font-semibold'
                   : 'border-transparent text-zinc-500 hover:text-zinc-900 font-medium'

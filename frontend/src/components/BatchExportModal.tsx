@@ -34,101 +34,108 @@ export const BatchExportModal: React.FC<BatchExportModalProps> = ({
     setIsExporting(true);
     setProgress(0);
 
-    const zip = new JSZip();
-    const folder = zip.folder(`kroma_${preset.marketplace.toLowerCase()}_export`);
+    try {
+      const zip = new JSZip();
+      const folder = zip.folder(`kroma_${preset.marketplace.toLowerCase()}_export`);
 
-    const canvas = document.createElement('canvas');
-    canvas.width = preset.width;
-    canvas.height = preset.height;
-    const ctx = canvas.getContext('2d');
+      const canvas = document.createElement('canvas');
+      canvas.width = preset.width;
+      canvas.height = preset.height;
+      const ctx = canvas.getContext('2d');
 
-    if (!ctx || !folder) {
+      if (!ctx || !folder) {
+        return;
+      }
+
+      for (let i = 0; i < assets.length; i++) {
+        const asset = assets[i];
+
+        // Draw composite
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Background
+        if (format === 'jpeg' || preset.background_rgb) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Load image
+        const loaded = await new Promise<boolean>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            const scaleRatio = preset.subject_area_ratio || 0.82;
+            const maxSubjectW = canvas.width * scaleRatio;
+            const maxSubjectH = canvas.height * scaleRatio;
+            const imgAspect = img.width / img.height;
+            let drawW = maxSubjectW;
+            let drawH = drawW / imgAspect;
+
+            if (drawH > maxSubjectH) {
+              drawH = maxSubjectH;
+              drawW = drawH * imgAspect;
+            }
+
+            const drawX = (canvas.width - drawW) / 2;
+            const drawY = (canvas.height - drawH) / 2 + (canvas.height * 0.02);
+
+            // Shadow
+            if (asset.hasBackgroundRemoved) {
+              renderShadow(ctx, img, drawX, drawY, drawW, drawH, shadow);
+            }
+
+            // Offscreen adjustments
+            const off = document.createElement('canvas');
+            off.width = Math.max(1, Math.round(drawW));
+            off.height = Math.max(1, Math.round(drawH));
+            const offCtx = off.getContext('2d');
+            if (offCtx) {
+              offCtx.drawImage(img, 0, 0, drawW, drawH);
+              const imgData = offCtx.getImageData(0, 0, off.width, off.height);
+              applyFloat32Adjustments(imgData, adjustments);
+              offCtx.putImageData(imgData, 0, 0);
+              ctx.drawImage(off, drawX, drawY, drawW, drawH);
+            }
+            resolve(true);
+          };
+          img.onerror = () => {
+            resolve(false);
+          };
+          img.src = asset.processedUrl || asset.originalUrl;
+        });
+
+        if (loaded) {
+          // Export canvas to blob
+          const mime = format === 'webp' ? 'image/webp' : format === 'png' ? 'image/png' : 'image/jpeg';
+          const blob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob((b) => resolve(b), mime, quality);
+          });
+
+          if (blob) {
+            const ext = format === 'jpeg' ? 'jpg' : format;
+            const cleanName = asset.name.replace(/\.[^/.]+$/, '');
+            folder.file(`${cleanName}_${preset.id}.${ext}`, blob);
+          }
+        }
+
+        setProgress(Math.round(((i + 1) / assets.length) * 100));
+      }
+
+      // Generate ZIP file and trigger browser download
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `kroma_export_${preset.id}_${Date.now()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      onClose();
+    } finally {
       setIsExporting(false);
-      return;
     }
-
-    for (let i = 0; i < assets.length; i++) {
-      const asset = assets[i];
-
-      // Draw composite
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Background
-      if (format === 'jpeg' || preset.background_rgb) {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-
-      // Load image
-      await new Promise<void>((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          const scaleRatio = preset.subject_area_ratio || 0.82;
-          const maxSubjectW = canvas.width * scaleRatio;
-          const maxSubjectH = canvas.height * scaleRatio;
-          const imgAspect = img.width / img.height;
-          let drawW = maxSubjectW;
-          let drawH = drawW / imgAspect;
-
-          if (drawH > maxSubjectH) {
-            drawH = maxSubjectH;
-            drawW = drawH * imgAspect;
-          }
-
-          const drawX = (canvas.width - drawW) / 2;
-          const drawY = (canvas.height - drawH) / 2 + (canvas.height * 0.02);
-
-          // Shadow
-          if (asset.hasBackgroundRemoved) {
-            renderShadow(ctx, img, drawX, drawY, drawW, drawH, shadow);
-          }
-
-          // Offscreen adjustments
-          const off = document.createElement('canvas');
-          off.width = Math.round(drawW);
-          off.height = Math.round(drawH);
-          const offCtx = off.getContext('2d');
-          if (offCtx) {
-            offCtx.drawImage(img, 0, 0, drawW, drawH);
-            const imgData = offCtx.getImageData(0, 0, off.width, off.height);
-            applyFloat32Adjustments(imgData, adjustments);
-            offCtx.putImageData(imgData, 0, 0);
-            ctx.drawImage(off, drawX, drawY, drawW, drawH);
-          }
-          resolve();
-        };
-        img.src = asset.processedUrl || asset.originalUrl;
-      });
-
-      // Export canvas to blob
-      const mime = format === 'webp' ? 'image/webp' : format === 'png' ? 'image/png' : 'image/jpeg';
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), mime, quality);
-      });
-
-      if (blob) {
-        const ext = format === 'jpeg' ? 'jpg' : format;
-        const cleanName = asset.name.replace(/\.[^/.]+$/, '');
-        folder.file(`${cleanName}_${preset.id}.${ext}`, blob);
-      }
-
-      setProgress(Math.round(((i + 1) / assets.length) * 100));
-    }
-
-    // Generate ZIP file and trigger browser download
-    const content = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(content);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `kroma_export_${preset.id}_${Date.now()}.zip`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    setIsExporting(false);
-    onClose();
   };
 
   return (

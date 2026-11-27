@@ -94,9 +94,23 @@ def test_sqlite_migrations_seed_and_idempotency(tmp_path: Path) -> None:
             int(r[0])
             for r in conn.execute("SELECT version FROM schema_migrations ORDER BY version").fetchall()
         ]
-        assert versions == [1, 2, 3]
+        assert versions == [1, 2, 3, 4, 5]
         asset_cols = {r[1] for r in conn.execute("PRAGMA table_info(assets)").fetchall()}
         assert {"parent_asset_id", "variant", "metadata_json", "updated_at"}.issubset(asset_cols)
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        assert {
+            "batch_jobs",
+            "batch_job_items",
+            "proofing_sessions",
+            "proofing_comments",
+            "proofing_events",
+        }.issubset(tables)
+        assert conn.execute("PRAGMA foreign_key_check;").fetchall() == []
 
     presets = repo.list_presets()
     assert len(presets) == 5
@@ -237,9 +251,15 @@ def test_sqlite_migrates_legacy_assets_presets_and_proofing_without_data_loss(
                 ("custom_brand_hero", "Brand Hero 4:5", "TikTok Shop", 1080, 1350, "4:5", "#112233", 0.80, "JPG", "Custom legacy"),
             ],
         )
+        legacy_feedback = (
+            '[{"id":"fb_legacy1","author":"Mai","action":"request_change",'
+            '"comment":"Soften shadow","pin_x":0.42,"pin_y":0.68,"created_at":"2026-11-26T11:00:00+00:00"},'
+            '{"id":"fb_legacy2","author":"Mai","action":"approve",'
+            '"comment":"Approved!","pin_x":null,"pin_y":null,"created_at":"2026-11-26T12:00:00Z"}]'
+        )
         conn.execute(
             "INSERT INTO proofing_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            ("proof-orphan", "proj_demo_fashion", "Orphan Proof", "Client", "pending", now, 1, "[]"),
+            ("proof-orphan", "proj_demo_fashion", "Orphan Proof", "Client", "approved", now, 1, legacy_feedback),
         )
         conn.commit()
 
@@ -270,6 +290,21 @@ def test_sqlite_migrates_legacy_assets_presets_and_proofing_without_data_loss(
     with sqlite3.connect(db_file) as conn:
         proofing_count = conn.execute("SELECT COUNT(*) FROM proofing_sessions").fetchone()[0]
         assert proofing_count == 1
+        comment_count = conn.execute("SELECT COUNT(*) FROM proofing_comments").fetchone()[0]
+        assert comment_count == 2
+        event_count = conn.execute("SELECT COUNT(*) FROM proofing_events").fetchone()[0]
+        assert event_count == 1
+        assert conn.execute("PRAGMA foreign_key_check;").fetchall() == []
+        session_row = conn.execute(
+            "SELECT project_id, status, approved_by, approved_at, updated_at FROM proofing_sessions WHERE id='proof-orphan'"
+        ).fetchone()
+        assert session_row == (
+            "proj_demo_fashion",
+            "approved",
+            "Mai",
+            "2026-11-26T12:00:00Z",
+            "2026-11-26T12:00:00Z",
+        )
 
 
 def test_local_fs_immutable_derived_and_delete_blob(tmp_path: Path) -> None:
@@ -333,6 +368,10 @@ def test_cloud_stubs_raise_not_implemented() -> None:
         pg.delete_asset("a1")
     with pytest.raises(NotImplementedError):
         pg.list_presets()
+    with pytest.raises(NotImplementedError):
+        pg.list_project_batch_jobs("p1")
+    with pytest.raises(NotImplementedError):
+        pg.get_proofing_session("s1")
     with pytest.raises(ValueError):
         PostgresInterface("mysql://invalid")
 

@@ -98,3 +98,47 @@ export const studioSelectors = {
   mobileRightDrawerToggle: (page: Page): Locator =>
     page.getByRole('button', { name: /Mở bảng công cụ|Toggle tools panel/i }),
 };
+
+export async function pasteImageFile(
+  page: Page,
+  pngBase64: string,
+  filename = 'pasted.png',
+): Promise<void> {
+  // Ensure React hydration + useEffect(window.addEventListener('paste', ...)) is complete
+  const isCurrentlyVi = await page
+    .locator('header button[title="Tạo link duyệt khách"]')
+    .isVisible()
+    .catch(() => false);
+  if (isCurrentlyVi) {
+    await studioSelectors.langEnButton(page).click();
+    await page.locator('header button[title="Share proofing link"]').waitFor();
+    await studioSelectors.langViButton(page).click();
+    await page.locator('header button[title="Tạo link duyệt khách"]').waitFor();
+  } else {
+    await studioSelectors.langViButton(page).click();
+    await page.locator('header button[title="Tạo link duyệt khách"]').waitFor();
+    await studioSelectors.langEnButton(page).click();
+    await page.locator('header button[title="Share proofing link"]').waitFor();
+  }
+
+  await page.evaluate(
+    ({ b64, fname }) => {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const file = new File([bytes], fname, { type: 'image/png' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const ev = new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(ev, 'clipboardData', {
+        configurable: true,
+        value: dt,
+      });
+      window.dispatchEvent(ev);
+    },
+    { b64: pngBase64, fname: filename },
+  );
+}

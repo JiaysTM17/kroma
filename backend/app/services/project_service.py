@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import shutil
+from pathlib import Path
 from typing import Any
 
 from app.core.errors import ConflictError, NotFoundError, PayloadTooLargeError, ValidationAppError
 from app.core.ids import new_id, utc_now_iso
+from app.core.security import assert_safe_relative_path
 from app.domain.enums import ErrorCode
 from app.domain.models import Project, ProjectState
 from app.domain.rules import (
@@ -23,10 +26,12 @@ class ProjectService:
         repo: DatabasePort,
         blob_store: BlobStorePort | None = None,
         max_state_bytes: int = 2 * 1024 * 1024,
+        exports_dir: Path | None = None,
     ) -> None:
         self._repo = repo
         self._blob_store = blob_store
         self._max_state_bytes = max_state_bytes
+        self._exports_dir = exports_dir
 
     def create_project(
         self,
@@ -76,14 +81,41 @@ class ProjectService:
             raise NotFoundError(f"Project '{project_id}' not found")
         return project
 
+    def update_project_name(self, project_id: str, name: str) -> Project:
+        try:
+            clean_name = validate_project_name(name)
+        except ValueError as exc:
+            raise ValidationAppError(str(exc)) from exc
+        updated = self._repo.update_project_name(project_id, clean_name, utc_now_iso())
+        if updated is None:
+            raise NotFoundError(f"Project '{project_id}' not found")
+        return updated
+
     def delete_project(self, project_id: str) -> None:
-        storage_keys = self._repo.delete_project(project_id)
-        if storage_keys is None:
+        artifacts = self._repo.delete_project_with_artifacts(project_id)
+        if artifacts is None:
             raise NotFoundError(f"Project '{project_id}' not found")
         if self._blob_store is not None:
-            for key in storage_keys:
+            for key in artifacts.storage_keys:
                 if self._repo.count_storage_key_refs(key) == 0:
                     self._blob_store.delete_blob(key)
+        if self._exports_dir is not None:
+            for zip_filename in artifacts.zip_filenames:
+                try:
+                    zip_path = assert_safe_relative_path(zip_filename, self._exports_dir)
+                    if zip_path.is_file():
+                        zip_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+            for job_id in artifacts.batch_job_ids:
+                try:
+                    staging_dir = assert_safe_relative_path(
+                        f".staging/{job_id}", self._exports_dir
+                    )
+                    if staging_dir.exists():
+                        shutil.rmtree(staging_dir, ignore_errors=True)
+                except Exception:
+                    pass
 
     def get_project_state(self, project_id: str) -> ProjectState:
         self.get_project(project_id)

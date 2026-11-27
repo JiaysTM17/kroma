@@ -162,7 +162,7 @@ test.describe('Tier 2 — BVA Backend F1–F5 (Negative & Boundary Analysis)', (
     const projectId = tracker.trackProject(proj.data.id);
     const tinyBuf = fs.readFileSync(fixtures.tinyPng);
 
-    for (const badFilename of ['../../etc/passwd.png', 'C:\\evil.png', 'bad\x01ctrl.png']) {
+    for (const badFilename of ['../../etc/passwd.png', 'C:evil.png', 'bad\x01ctrl.png']) {
       const badRes = await api.uploadAsset(projectId, {
         buffer: tinyBuf,
         filename: badFilename,
@@ -181,7 +181,7 @@ test.describe('Tier 2 — BVA Backend F1–F5 (Negative & Boundary Analysis)', (
     expect(conRes.data.filename).toBe('_CON.png');
 
     // Use a distinct valid image so SHA-256 differs from tinyPng
-    const nfdName = 'Ao\u0301 da\u0300i.PNG';
+    const nfdName = 'A\u0301o da\u0300i.PNG';
     const uniRes = await api.uploadAsset(projectId, {
       filePath: fixtures.unicodePng,
       filename: nfdName,

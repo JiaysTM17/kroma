@@ -1,40 +1,47 @@
 from __future__ import annotations
 
-import json
-import uuid
-from datetime import datetime, timezone
+from fastapi import APIRouter, Depends
 
-from fastapi import APIRouter, Depends, HTTPException
+from app.api.deps import get_project_service
+from app.core.errors import NotFoundError
+from app.services.project_service import ProjectService
 
-from app.api.deps import get_settings
-from app.core.config import Settings
-
-from ..database import get_connection
 from ..models.project import ProjectCreate, ProjectResponse
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
-@router.get("", response_model=list[ProjectResponse])
-def list_projects(settings: Settings = Depends(get_settings)):
-    conn = get_connection(settings.sqlite_path)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM projects ORDER BY updated_at DESC")
-        rows = cursor.fetchall()
-    finally:
-        conn.close()
+def _default_manifest() -> dict:
+    return {
+        "images": [],
+        "layers": [],
+        "selected_preset": "shopee_square",
+        "shadow": {"enabled": False, "type": "drop", "blur": 12, "opacity": 0.4},
+    }
 
-    results = []
-    for r in rows:
+
+@router.get("", response_model=list[ProjectResponse])
+def list_projects(
+    project_service: ProjectService = Depends(get_project_service),
+) -> list[ProjectResponse]:
+    projects = project_service.list_projects()
+    results: list[ProjectResponse] = []
+    for proj in projects:
+        try:
+            state = project_service.get_project_state(proj.id)
+            manifest = state.state
+            schema_version = state.schema_version
+        except NotFoundError:
+            manifest = _default_manifest()
+            schema_version = 1
         results.append(
             ProjectResponse(
-                id=r["id"],
-                name=r["name"],
-                created_at=r["created_at"],
-                updated_at=r["updated_at"],
-                schema_version=r["schema_version"],
-                manifest=json.loads(r["manifest_json"]),
+                id=proj.id,
+                name=proj.name,
+                created_at=proj.created_at,
+                updated_at=proj.updated_at,
+                schema_version=schema_version,
+                manifest=manifest,
             )
         )
     return results
@@ -43,64 +50,38 @@ def list_projects(settings: Settings = Depends(get_settings)):
 @router.post("", response_model=ProjectResponse, status_code=201)
 def create_project(
     data: ProjectCreate,
-    settings: Settings = Depends(get_settings),
-):
-    proj_id = f"proj_{uuid.uuid4().hex[:12]}"
-    now = datetime.now(timezone.utc).isoformat()
-    manifest = data.manifest or {
-        "images": [],
-        "layers": [],
-        "selected_preset": "shopee_square",
-        "shadow": {"enabled": False, "type": "drop", "blur": 12, "opacity": 0.4},
-    }
-
-    conn = get_connection(settings.sqlite_path)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO projects (id, name, created_at, updated_at, schema_version, manifest_json)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (proj_id, data.name, now, now, 1, json.dumps(manifest)),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectResponse:
+    project = project_service.create_project(name=data.name)
+    manifest = data.manifest if data.manifest is not None else _default_manifest()
+    state = project_service.update_project_state(
+        project.id,
+        state_payload=manifest,
+    )
     return ProjectResponse(
-        id=proj_id,
-        name=data.name,
-        created_at=now,
-        updated_at=now,
-        schema_version=1,
-        manifest=manifest,
+        id=project.id,
+        name=project.name,
+        created_at=project.created_at,
+        updated_at=state.updated_at,
+        schema_version=state.schema_version,
+        manifest=state.state,
     )
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
     project_id: str,
-    settings: Settings = Depends(get_settings),
-):
-    conn = get_connection(settings.sqlite_path)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
-        row = cursor.fetchone()
-    finally:
-        conn.close()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Dự án không tồn tại")
-
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectResponse:
+    project = project_service.get_project(project_id)
+    state = project_service.get_project_state(project_id)
     return ProjectResponse(
-        id=row["id"],
-        name=row["name"],
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
-        schema_version=row["schema_version"],
-        manifest=json.loads(row["manifest_json"]),
+        id=project.id,
+        name=project.name,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+        schema_version=state.schema_version,
+        manifest=state.state,
     )
 
 
@@ -108,41 +89,31 @@ def get_project(
 def update_project(
     project_id: str,
     data: ProjectCreate,
-    settings: Settings = Depends(get_settings),
-):
-    now = datetime.now(timezone.utc).isoformat()
-    conn = get_connection(settings.sqlite_path)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Dự án không tồn tại")
-
-        manifest_json = json.dumps(data.manifest) if data.manifest else "{}"
-        cursor.execute(
-            """
-            UPDATE projects SET name = ?, updated_at = ?, manifest_json = ?
-            WHERE id = ?
-            """,
-            (data.name, now, manifest_json, project_id),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-    return get_project(project_id, settings=settings)
+    project_service: ProjectService = Depends(get_project_service),
+) -> ProjectResponse:
+    project = project_service.update_project_name(project_id, data.name)
+    manifest = data.manifest if data.manifest is not None else {}
+    state = project_service.update_project_state(
+        project_id,
+        state_payload=manifest,
+    )
+    return ProjectResponse(
+        id=project.id,
+        name=project.name,
+        created_at=project.created_at,
+        updated_at=state.updated_at,
+        schema_version=state.schema_version,
+        manifest=state.state,
+    )
 
 
 @router.delete("/{project_id}")
 def delete_project(
     project_id: str,
-    settings: Settings = Depends(get_settings),
-):
-    conn = get_connection(settings.sqlite_path)
+    project_service: ProjectService = Depends(get_project_service),
+) -> dict[str, str]:
     try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM projects WHERE id = ?", (project_id,))
-        conn.commit()
-    finally:
-        conn.close()
+        project_service.delete_project(project_id)
+    except NotFoundError:
+        pass
     return {"status": "deleted", "id": project_id}

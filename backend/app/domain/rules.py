@@ -4,10 +4,17 @@ import json
 import math
 import re
 import unicodedata
+from datetime import datetime, timezone
 from typing import Any
 
-from app.domain.enums import MarketplaceId
-from app.domain.models import SafeZone
+from app.domain.enums import (
+    BatchStatus,
+    MarketplaceId,
+    ProofingAction,
+    ProofingDecision,
+    ProofingStatus,
+)
+from app.domain.models import BatchAdjustments, SafeZone
 
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 _DESCRIPTION_CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -324,3 +331,316 @@ def validate_safe_zone(safe_zone: SafeZone | dict[str, Any] | None) -> SafeZone 
         bottom=parsed["bottom"],
         left=parsed["left"],
     )
+
+
+def _validate_finite_float(
+    value: Any,
+    field_name: str,
+    *,
+    min_value: float,
+    max_value: float,
+    exclusive_min: bool = False,
+) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field_name} must be a finite number")
+    fval = float(value)
+    if not math.isfinite(fval):
+        raise ValueError(f"{field_name} must be finite")
+    if exclusive_min:
+        if fval <= min_value or fval > max_value:
+            raise ValueError(f"{field_name} must be > {min_value} and <= {max_value}")
+    else:
+        if fval < min_value or fval > max_value:
+            raise ValueError(f"{field_name} must be between {min_value} and {max_value}")
+    return fval
+
+
+def validate_batch_asset_ids(
+    asset_ids: list[str] | tuple[str, ...],
+    max_assets: int = 100,
+) -> tuple[str, ...]:
+    if isinstance(asset_ids, (str, bytes)) or not isinstance(asset_ids, (list, tuple)):
+        raise ValueError("asset_ids must be a non-empty list of asset IDs")
+    if not asset_ids:
+        raise ValueError("asset_ids must contain at least one asset ID")
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for item in asset_ids:
+        if not isinstance(item, str):
+            raise ValueError("Each asset_id must be a string")
+        cleaned = item.strip()
+        if not cleaned:
+            raise ValueError("asset_ids cannot contain empty values")
+        if cleaned not in seen:
+            seen.add(cleaned)
+            deduped.append(cleaned)
+    if len(deduped) > max_assets:
+        raise ValueError(f"asset_ids cannot exceed {max_assets} assets per batch job")
+    return tuple(deduped)
+
+
+def validate_batch_format(
+    fmt: str | None,
+    fallback_formats: tuple[str, ...] | list[str],
+) -> str:
+    if fmt is None or not str(fmt).strip():
+        if fallback_formats:
+            candidate = str(fallback_formats[0]).strip().lower()
+        else:
+            candidate = "webp"
+    else:
+        if not isinstance(fmt, str):
+            raise ValueError("format must be a string")
+        candidate = fmt.strip().lower()
+    if candidate == "jpg":
+        candidate = "jpeg"
+    if candidate not in ALLOWED_PRESET_FORMATS:
+        allowed = ", ".join(ALLOWED_PRESET_FORMATS)
+        raise ValueError(f"Unsupported batch format '{fmt}'; expected one of: {allowed}")
+    return candidate
+
+
+def validate_batch_quality(quality: int) -> int:
+    if isinstance(quality, bool) or not isinstance(quality, int):
+        raise ValueError("quality must be an integer between 1 and 100")
+    if not (1 <= quality <= 100):
+        raise ValueError("quality must be between 1 and 100")
+    return quality
+
+
+def validate_watermark_text(text: str | None) -> str | None:
+    if text is None:
+        return None
+    if not isinstance(text, str):
+        raise ValueError("watermark_text must be a string")
+    normalized = unicodedata.normalize("NFC", text).strip()
+    if not normalized:
+        return None
+    if len(normalized) > 120:
+        raise ValueError("watermark_text cannot exceed 120 characters")
+    if _CONTROL_CHAR_RE.search(normalized):
+        raise ValueError("watermark_text contains invalid control characters")
+    return normalized
+
+
+def validate_batch_adjustments(
+    raw: BatchAdjustments | dict[str, Any] | None,
+) -> BatchAdjustments:
+    if raw is None:
+        return BatchAdjustments()
+    if isinstance(raw, BatchAdjustments):
+        data = {
+            "brightness": raw.brightness,
+            "contrast": raw.contrast,
+            "saturation": raw.saturation,
+            "sharpness": raw.sharpness,
+            "exposure": raw.exposure,
+        }
+    elif isinstance(raw, dict):
+        data = raw
+    else:
+        raise ValueError("adjustments must be an object")
+
+    brightness = _validate_finite_float(
+        data.get("brightness", 1.0), "adjustments.brightness", min_value=0.1, max_value=3.0
+    )
+    contrast = _validate_finite_float(
+        data.get("contrast", 1.0), "adjustments.contrast", min_value=0.1, max_value=3.0
+    )
+    saturation = _validate_finite_float(
+        data.get("saturation", 1.0), "adjustments.saturation", min_value=0.0, max_value=3.0
+    )
+    sharpness = _validate_finite_float(
+        data.get("sharpness", 1.0), "adjustments.sharpness", min_value=0.0, max_value=3.0
+    )
+    raw_exposure = data.get("exposure")
+    exposure = (
+        _validate_finite_float(
+            raw_exposure, "adjustments.exposure", min_value=-100.0, max_value=100.0
+        )
+        if raw_exposure is not None
+        else None
+    )
+    return BatchAdjustments(
+        brightness=brightness,
+        contrast=contrast,
+        saturation=saturation,
+        sharpness=sharpness,
+        exposure=exposure,
+    )
+
+
+def compute_batch_progress(
+    total_items: int,
+    completed_items: int,
+    failed_items: int,
+    cancelled_items: int = 0,
+) -> float:
+    if total_items <= 0:
+        return 0.0
+    done = max(0, completed_items + failed_items + cancelled_items)
+    pct = round((done / total_items) * 100.0, 2)
+    return max(0.0, min(100.0, pct))
+
+
+def derive_batch_status(
+    total_items: int,
+    completed_items: int,
+    failed_items: int,
+    cancelled_items: int,
+    cancel_requested: bool,
+) -> BatchStatus:
+    if cancel_requested or cancelled_items > 0:
+        return BatchStatus.CANCELLED
+    if total_items > 0 and completed_items == total_items and failed_items == 0:
+        return BatchStatus.COMPLETED
+    if completed_items > 0 and failed_items > 0:
+        return BatchStatus.PARTIAL_FAILED
+    return BatchStatus.FAILED
+
+
+def validate_proofing_title(title: str) -> str:
+    if not isinstance(title, str):
+        raise ValueError("Proofing title must be a string")
+    normalized = unicodedata.normalize("NFC", title).strip()
+    if not normalized:
+        raise ValueError("Proofing title cannot be empty")
+    if len(normalized) > 200:
+        raise ValueError("Proofing title cannot exceed 200 characters")
+    if _CONTROL_CHAR_RE.search(normalized):
+        raise ValueError("Proofing title contains invalid control characters")
+    return normalized
+
+
+def validate_proofing_actor(
+    actor: str | None,
+    *,
+    default: str | None = None,
+    field_name: str = "author",
+) -> str:
+    if actor is None:
+        if default is not None:
+            return default
+        raise ValueError(f"{field_name} cannot be empty")
+    if not isinstance(actor, str):
+        raise ValueError(f"{field_name} must be a string")
+    normalized = unicodedata.normalize("NFC", actor).strip()
+    if not normalized:
+        if default is not None:
+            return default
+        raise ValueError(f"{field_name} cannot be empty")
+    if len(normalized) > 120:
+        raise ValueError(f"{field_name} cannot exceed 120 characters")
+    if _CONTROL_CHAR_RE.search(normalized):
+        raise ValueError(f"{field_name} contains invalid control characters")
+    return normalized
+
+
+def validate_proofing_comment_body(
+    body: str | None,
+    *,
+    allow_empty: bool = False,
+) -> str:
+    if body is None:
+        if allow_empty:
+            return ""
+        raise ValueError("Comment body cannot be empty")
+    if not isinstance(body, str):
+        raise ValueError("Comment body must be a string")
+    normalized = unicodedata.normalize("NFC", body).strip()
+    if not normalized and not allow_empty:
+        raise ValueError("Comment body cannot be empty")
+    if len(normalized) > 2000:
+        raise ValueError("Comment body cannot exceed 2000 characters")
+    if _DESCRIPTION_CONTROL_CHAR_RE.search(normalized):
+        raise ValueError("Comment body contains invalid control characters")
+    return normalized
+
+
+def validate_pin_coordinates(
+    pin_x: float | None,
+    pin_y: float | None,
+) -> tuple[float | None, float | None]:
+    if (pin_x is None) != (pin_y is None):
+        raise ValueError("Both pin_x and pin_y must be provided together")
+    if pin_x is None and pin_y is None:
+        return None, None
+    fx = _validate_finite_float(pin_x, "pin_x", min_value=0.0, max_value=1.0)
+    fy = _validate_finite_float(pin_y, "pin_y", min_value=0.0, max_value=1.0)
+    return fx, fy
+
+
+def validate_expires_hours(expires_hours: int | float | None) -> float | None:
+    if expires_hours is None:
+        return None
+    return _validate_finite_float(
+        expires_hours,
+        "expires_hours",
+        min_value=0.0,
+        max_value=8760.0,
+        exclusive_min=True,
+    )
+
+
+def parse_iso_utc(raw: str) -> datetime:
+    text = raw.strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    dt = datetime.fromisoformat(text)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def is_session_expired(expires_at: str | None, now: datetime) -> bool:
+    if not expires_at:
+        return False
+    exp_dt = parse_iso_utc(expires_at)
+    now_utc = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
+    return now_utc >= exp_dt
+
+
+def is_revision_stale(
+    session_revision_id: str | None,
+    current_revision_id: str | None,
+) -> bool:
+    return bool(
+        session_revision_id
+        and current_revision_id
+        and session_revision_id != current_revision_id
+    )
+
+
+def next_status_for_action(
+    current: ProofingStatus,
+    action: ProofingAction,
+) -> ProofingStatus:
+    if current == ProofingStatus.ARCHIVED:
+        raise ValueError("Archived proofing session must be reopened before submitting feedback")
+    if action == ProofingAction.APPROVE:
+        return ProofingStatus.APPROVED
+    if action == ProofingAction.REQUEST_CHANGE:
+        return ProofingStatus.REVISION_REQUESTED
+    if current == ProofingStatus.PENDING:
+        return ProofingStatus.IN_REVIEW
+    return current
+
+
+def next_status_for_decision(
+    current: ProofingStatus,
+    decision: ProofingDecision,
+) -> ProofingStatus:
+    if decision == ProofingDecision.APPROVE:
+        if current == ProofingStatus.ARCHIVED:
+            raise ValueError("Archived proofing session must be reopened before approval")
+        return ProofingStatus.APPROVED
+    if decision == ProofingDecision.REQUEST_CHANGE:
+        if current == ProofingStatus.ARCHIVED:
+            raise ValueError("Archived proofing session must be reopened before requesting changes")
+        return ProofingStatus.REVISION_REQUESTED
+    if decision == ProofingDecision.REOPEN:
+        return ProofingStatus.PENDING
+    if decision == ProofingDecision.ARCHIVE:
+        return ProofingStatus.ARCHIVED
+    # REVOKE preserves current status while setting revoked_at
+    return current

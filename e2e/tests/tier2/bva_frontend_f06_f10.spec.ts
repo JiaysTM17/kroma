@@ -229,13 +229,16 @@ test.describe('Tier 2 — BVA Frontend F6–F10 (Negative, Boundary & Responsive
     await studioSelectors.emptyFileInput(page).setInputFiles(fixtures.tinyPng);
     await studioSelectors.exportButton(page).click();
 
-    const qualitySlider = page.locator('input[type="range"][min="0.7"][max="1"]');
+    const modal = page.locator('[role="dialog"], div.fixed.inset-0').filter({
+      hasText: /Xuất ảnh hàng loạt|Batch Export/i,
+    }).last();
+    const qualitySlider = modal.locator('input[type="range"][min="0.7"][max="1"]');
     await expect(qualitySlider).toBeVisible();
 
-    await page.getByRole('button', { name: 'PNG', exact: true }).click();
+    await modal.getByRole('button', { name: 'PNG', exact: true }).click();
     await expect(qualitySlider).toBeHidden();
 
-    await page.getByRole('button', { name: 'JPEG', exact: true }).click();
+    await modal.getByRole('button', { name: 'JPEG', exact: true }).click();
     await expect(qualitySlider).toBeVisible();
     monitor.assertClean();
   });
@@ -341,7 +344,7 @@ test.describe('Tier 2 — BVA Frontend F6–F10 (Negative, Boundary & Responsive
     await page.goto('/proof/demo');
 
     const header = page.locator('aside h2');
-    const beforeText = await header.innerText();
+    const beforeText = (await header.textContent()) ?? '';
     const input = page.getByPlaceholder('Để lại nhận xét hoặc yêu cầu sửa...');
     await input.fill('   ');
     await page.locator('aside button[type="submit"]').click();
@@ -420,6 +423,7 @@ test.describe('Tier 2 — BVA Frontend F6–F10 (Negative, Boundary & Responsive
 
     const right = studioSelectors.rightSidebar(page);
     await right.getByRole('button', { name: 'Khung tem', exact: true }).click();
+    await right.locator('input[type="checkbox"]').first().check();
     const wmInput = right.getByPlaceholder('Nhập tên Shop hoặc số điện thoại');
     await wmInput.click();
     await wmInput.fill('ABC');

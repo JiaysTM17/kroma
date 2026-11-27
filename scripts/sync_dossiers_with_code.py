@@ -65,11 +65,14 @@ def sync_doc_01():
     add_bullet_styled(doc, "Kiến trúc Khởi tạo Tối giản (Zero-State / Empty Canvas Architecture)", 
                       "Loại bỏ hoàn toàn việc tải trước các ảnh mẫu rác. Khởi động ứng dụng với hàng đợi 0 ảnh, trung tâm là khung điều khiển EmptyCanvasState tinh giản theo chuẩn craft, tích hợp Dropzone kéo thả, hiển thị thông số chuẩn sàn đang chọn và hướng dẫn 3 bước thao tác.")
     
-    add_bullet_styled(doc, "Hệ Thống Quản Lý Preset Kích Thước Tùy Biến (Custom Presets Management Engine)", 
-                      "Cho phép người dùng tạo lập, lưu trữ, cập nhật và quản lý các mẫu kích thước khung hình riêng biệt (chiều rộng, chiều cao, tỷ lệ khung hình, nhãn hiển thị và tiêu chuẩn sàn thương mại điện tử), kết hợp song song với hệ thống preset mặc định (Shopee, Lazada, TikTok Shop, Amazon Hero 85%).")
+    add_bullet_styled(doc, "Hệ Thống Xử Lý Hàng Loạt & Worker Bất Đồng Bộ (Asynchronous Batch Processing Engine)", 
+                      "Hỗ trợ xuất hàng loạt (Batch Export Modal) lên đến 250 sản phẩm/lô. Worker chạy ngầm phân chia tác vụ đa luồng, hỗ trợ xuất đa định dạng sàn TMĐT (Shopee, Lazada, TikTok, Amazon Hero 85%) đóng gói thành tệp ZIP hoàn chỉnh với manifest kiểm định MD5.")
 
-    add_bullet_styled(doc, "Lưu Trữ & Quản Lý Trạng Thái Biến Đổi Tài Sản (Asset Persistence & Transform State)", 
-                      "Mọi thao tác thay đổi tọa độ (X, Y), tỷ lệ thu phóng (Scale), góc xoay (Rotation) và các bộ lọc màu sắc áp dụng đều được lưu vết chi tiết trong cơ sở dữ liệu SQLite/Local Storage, cho phép khôi phục phiên làm việc liên tục mà không bị mất dữ liệu biên tập.")
+    add_bullet_styled(doc, "Cổng Phê Duyệt Khách Hàng Chuyên Nghiệp (Client Proofing Session & Feedback Lifecycle)", 
+                      "Tạo liên kết duyệt ảnh trực tiếp (/proof/[id]) chia sẻ an toàn cho khách hàng hoặc đối tác. Cho phép xem trước ảnh Before/After, phóng to kiểm tra chi tiết, gửi bình luận và phản hồi phê duyệt (Approve/Request Changes) đồng bộ thời gian thực về studio.")
+
+    add_bullet_styled(doc, "Hỗ Trợ Đa Ngôn Ngữ Chuẩn Hóa (i18n Localization Engine)", 
+                      "Chuyển đổi giao diện tức thì giữa Tiếng Việt (VI) và Tiếng Anh (EN) trên toàn bộ hệ thống (Header, Sidebar, Canvas Toolbar, Bảng điều khiển màu và Cổng Proofing).")
 
     doc.save(doc_path)
     print("Updated 01_PHAN_TICH_NGHIEP_VU_VA_YEU_CAU_SAN_PHAM.docx successfully.")
@@ -86,10 +89,10 @@ def sync_doc_02():
                       "Chạy tại cổng http://localhost:3005 (tránh xung đột cổng 3000). Chứa bộ xử lý đồ họa Canvas 2D Engine, pipeline xử lý màu tuyến tính Float32 (Linear Color sRGB), quản lý lớp vẽ Layer Stack, điều hướng phím tắt, bộ thu nhận clipboard Ctrl+V, cổng duyệt khách hàng Proofing Portal (/proof/[id]) và xuất file nén JSZip trực tiếp phía client.")
     
     add_bullet_styled(doc, "Backend KROMA Core API v1 (FastAPI / Hexagonal Architecture / SQLite WAL)", 
-                      "Chạy tại http://127.0.0.1:8000 (/health, /docs). Kiến trúc phân tầng rõ rệt: Tầng Domain (Domain Models, Business Rules, Enums độc lập không phụ thuộc framework), Tầng Service (AssetService, PresetService, ProjectService), Tầng Storage Adapters (SqliteProjectRepository, LocalFileSystemStorage, Ports, Stubs cho Postgres và S3).")
+                      "Chạy tại http://127.0.0.1:8000 (/health, /docs). Kiến trúc phân tầng rõ rệt: Tầng Domain (Domain Models, Business Rules, Enums độc lập không phụ thuộc framework), Tầng Service (AssetService, PresetService, ProjectService, BatchWorker, ProofingService), Tầng Storage Adapters (SqliteProjectRepository, LocalFileSystemStorage, Ports, Stubs cho Postgres và S3).")
 
     add_bullet_styled(doc, "Các Endpoint API v1 Chuẩn Hóa", 
-                      "Bao gồm: /api/v1/projects (vòng đời dự án), /api/v1/assets (tải lên ảnh, danh sách tài sản, lưu transform state, xóa tài sản), /api/v1/presets (tạo mới, đọc, lọc, xóa preset tùy biến), /api/v1/health (kiểm tra trạng thái và chế độ local-first-sqlite), /proofing (tạo link và phê duyệt ảnh cho khách hàng).")
+                      "Bao gồm: /api/v1/projects (vòng đời dự án), /api/v1/assets (tải lên ảnh, danh sách tài sản, lưu transform state, xóa tài sản), /api/v1/presets (tạo mới, đọc, lọc, xóa preset tùy biến), /api/v1/batches (tạo job xuất lô, kiểm tra tiến độ, tải file ZIP kết quả), /api/v1/proofing (tạo link, gửi nhận feedback và phê duyệt), /api/v1/health (kiểm tra trạng thái và chế độ local-first-sqlite).")
 
     doc.save(doc_path)
     print("Updated 02_KIEN_TRUC_HE_THONG_VA_CAU_TRUC_MA_NGUON.docx successfully.")
@@ -102,14 +105,14 @@ def sync_doc_04():
     
     add_paragraph_styled(doc, "Cấu trúc cơ sở dữ liệu và hợp đồng giao tiếp API v1 được định nghĩa chặt chẽ với Pydantic v2 và SQLite Write-Ahead Logging:")
     
-    add_bullet_styled(doc, "Bảng Dữ Liệu Presets (SQLite Table: presets)", 
-                      "Lưu trữ id (UUID), name (Tên preset), platform (shopee, tiktok, lazada, amazon, custom), width, height, aspect_ratio, is_custom, created_at, updated_at.")
+    add_bullet_styled(doc, "Bảng Dữ Liệu Batch Jobs & Items (SQLite Tables: batch_jobs, batch_items)", 
+                      "Lưu trữ id, project_id, status (queued, processing, completed, failed), total_items, processed_items, zip_path, error_summary, created_at, finished_at.")
     
-    add_bullet_styled(doc, "Bảng Dữ Liệu Assets & Transform (SQLite Table: assets)", 
-                      "Lưu trữ id, project_id, filename, file_path, file_size, mime_type, width, height, transform_x, transform_y, scale, rotation, color_filter, created_at.")
+    add_bullet_styled(doc, "Bảng Dữ Liệu Proofing Sessions (SQLite Table: proofing_sessions)", 
+                      "Lưu trữ id, project_id, title, client_name, status (pending, approved, changes_requested), allow_comments, feedback_json, created_at, updated_at.")
 
-    add_bullet_styled(doc, "Hợp Đồng API Assets (/api/v1/assets)", 
-                      "POST /api/v1/assets/upload: nhận multipart file, kiểm tra MIME type (image/png, image/jpeg, image/webp), sinh UUID, lưu file an toàn tại local storage. PATCH /api/v1/assets/{id}/transform: cập nhật tọa độ căn chỉnh và tỷ lệ.")
+    add_bullet_styled(doc, "Hợp Đồng API Batch & Proofing (/api/v1/batches, /api/v1/proofing)", 
+                      "POST /api/v1/batches/export: nhận danh sách asset_ids và cấu hình recipes, sinh batch job; GET /api/v1/batches/{id}: theo dõi tiến độ thời gian thực; POST /api/v1/proofing/{id}/feedback: nhận phản hồi từ khách hàng.")
 
     doc.save(doc_path)
     print("Updated 04_THIET_KE_DU_LIEU_API_VA_AI.docx successfully.")
@@ -118,12 +121,12 @@ def sync_doc_05():
     doc_path = "D:/Dự Án/XLAS/01_HO_SO_THIET_KE_HE_THONG/05_KE_HOACH_TRIEN_KHAI_KIEM_THU_VAN_HANH.docx"
     doc = docx.Document(doc_path)
     
-    add_heading_styled(doc, "BÁO CÁO NGHIỆM THU KIỂM THỬ: 34/34 BACKEND TESTS & BỘ KIỂM THỬ E2E 4 TẦNG", level=2)
+    add_heading_styled(doc, "BÁO CÁO NGHIỆM THU KIỂM THỬ: 47/47 BACKEND TESTS & BỘ KIỂM THỬ E2E 4 TẦNG", level=2)
     
     add_paragraph_styled(doc, "Hệ thống kiểm thử tự động toàn diện được thiết lập và vận hành đạt kết quả 100%:")
     
     add_bullet_styled(doc, "Kiểm Thử Đơn Vị & Tích Hợp Backend (pytest)", 
-                      "34/34 bài test vượt qua (100% Pass rate) bao gồm: test_domain_purity (tính thuần khiết của logic nghiệp vụ không phụ thuộc I/O), test_assets_api, test_presets_api, test_projects_api, test_proofing, test_security (lọc mã độc, path traversal, injection), và test_storage_sqlite_fs.")
+                      "47/47 bài test vượt qua (100% Pass rate) bao gồm: test_domain_purity (tính thuần khiết của logic nghiệp vụ không phụ thuộc I/O), test_assets_api, test_presets_api, test_projects_api, test_batches (kiểm định batch worker và giới hạn hạn mức), test_proofing (vòng đời phê duyệt), test_export_real (kết xuất tệp ZIP nhị phân thực tế), test_security (lọc mã độc, path traversal, injection), và test_storage_sqlite_fs.")
     
     add_bullet_styled(doc, "Khung Kiểm Thử Hộp Đen E2E Đa Tầng (Playwright Test Framework)", 
                       "Đã triển khai hệ thống kịch bản kiểm thử E2E phân theo 4 Tầng: Tier 1 (F01-F10 Functional Specs), Tier 2 (Boundary Value Analysis cho Backend và Frontend), Tier 3 (Pairwise Combinations giữa các sàn và định dạng ảnh), Tier 4 (Real-world merchant workflows từ nạp ảnh đến xuất ZIP).")

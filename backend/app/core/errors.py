@@ -56,6 +56,20 @@ class ConflictError(AppError):
         )
 
 
+class GoneError(AppError):
+    def __init__(
+        self,
+        message: str = "Resource is no longer available",
+        code: ErrorCode = ErrorCode.GONE,
+    ) -> None:
+        super().__init__(
+            code=code,
+            message=message,
+            status_code=410,
+            retryable=False,
+        )
+
+
 class PayloadTooLargeError(AppError):
     def __init__(
         self,

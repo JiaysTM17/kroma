@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { test, expect } from '../../fixtures/testTracker';
 import { ensureAllFixtures } from '../../fixtures/imageFixtures';
-import { attachErrorMonitor, studioSelectors } from '../../helpers/selectors';
+import { attachErrorMonitor, pasteImageFile, studioSelectors } from '../../helpers/selectors';
 import { inspectZipBuffer, probeImagePixelsWithPillow } from '../../helpers/zipInspect';
 
 test.describe('Tier 4 — Real-World Seller & Reviewer Workflows (7 End-to-End Scenarios)', () => {
@@ -250,14 +250,7 @@ test.describe('Tier 4 — Real-World Seller & Reviewer Workflows (7 End-to-End S
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
     const upPromise = page.waitForResponse((r) => r.url().includes('/assets') && r.request().method() === 'POST' && r.status() === 201);
-    await page.evaluate((b64) => {
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const dt = new DataTransfer();
-      dt.items.add(new File([bytes], 'tablet_paste.png', { type: 'image/png' }));
-      window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-    }, pngBase64);
+    await pasteImageFile(page, pngBase64, 'tablet_paste.png');
     tracker.trackProject((await (await upPromise).json()).project_id);
 
     await studioSelectors.mobileLeftDrawerToggle(page).click();

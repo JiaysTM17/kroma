@@ -51,9 +51,15 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="h-7 sm:h-8 flex items-center shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            src="/assets/logo/kroma-icon.svg"
+            alt="KROMA"
+            className="w-7 h-7 sm:hidden rounded object-contain shrink-0"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/assets/logo/kroma-logo-horizontal.svg"
             alt="KROMA Intelligent Image Studio"
-            className="h-7 sm:h-8 w-auto object-contain"
+            className="hidden sm:block h-8 w-auto object-contain"
           />
         </div>
 
@@ -96,9 +102,10 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onOpenProofing}
           title={t.share_proofing}
-          className="h-8 flex items-center gap-2 px-2 sm:px-3 text-xs font-medium text-zinc-700 bg-surface-subtle hover:bg-surface-muted border border-surface-border rounded-md transition-colors whitespace-nowrap"
+          aria-label={t.share_proofing}
+          className="h-8 w-8 md:w-auto md:px-3 flex items-center justify-center gap-2 text-xs font-medium text-zinc-700 bg-surface-subtle hover:bg-surface-muted border border-surface-border rounded-md transition-colors whitespace-nowrap"
         >
-          <Share2 className="w-4 h-4 text-zinc-500" strokeWidth={1.5} />
+          <Share2 className="w-4 h-4 text-zinc-500 shrink-0" strokeWidth={1.5} />
           <span className="hidden md:inline">{t.share_proofing}</span>
         </button>
 
@@ -106,11 +113,13 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={onOpenExport}
-          className="h-8 flex items-center gap-2 px-3 text-xs font-medium text-white bg-kroma-600 hover:bg-kroma-700 rounded-md shadow-sm transition-colors whitespace-nowrap"
+          title={t.export_all}
+          aria-label={t.export_all}
+          className="h-8 px-2 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 text-xs font-medium text-white bg-kroma-600 hover:bg-kroma-700 rounded-md shadow-sm transition-colors whitespace-nowrap"
         >
-          <Download className="w-4 h-4" strokeWidth={1.5} />
+          <Download className="w-4 h-4 shrink-0" strokeWidth={1.5} />
           <span className="hidden sm:inline">{t.export_all}</span>
-          <span className="sm:hidden">{t.export_short}</span>
+          <span className="sm:hidden">ZIP</span>
         </button>
 
         {onToggleRightPanel && (

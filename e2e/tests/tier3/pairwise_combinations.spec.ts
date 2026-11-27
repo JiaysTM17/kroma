@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { test, expect } from '../../fixtures/testTracker';
 import { ensureAllFixtures } from '../../fixtures/imageFixtures';
 import { sha256Hex, uniqueId } from '../../helpers/apiClient';
-import { attachErrorMonitor, studioSelectors } from '../../helpers/selectors';
+import { attachErrorMonitor, pasteImageFile, studioSelectors } from '../../helpers/selectors';
 import { inspectZipBuffer, probeImagePixelsWithPillow } from '../../helpers/zipInspect';
 
 test.describe('Tier 3 — Cross-Feature Pairwise Combinations (12 Tests)', () => {
@@ -413,14 +413,7 @@ test.describe('Tier 3 — Cross-Feature Pairwise Combinations (12 Tests)', () =>
     const monitor = attachErrorMonitor(page);
 
     await page.goto('/');
-    await page.evaluate((b64) => {
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const dt = new DataTransfer();
-      dt.items.add(new File([bytes], 'clipboard_shoe.png', { type: 'image/png' }));
-      window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-    }, pngBase64);
+    await pasteImageFile(page, pngBase64, 'clipboard_shoe.png');
 
     await expect(studioSelectors.canvas(page)).toBeVisible();
 
@@ -435,7 +428,7 @@ test.describe('Tier 3 — Cross-Feature Pairwise Combinations (12 Tests)', () =>
     await expect(right.locator('button[title="Show shadow"]')).toBeVisible();
 
     await studioSelectors.topToolbar(page).getByRole('button', { name: 'Lưới hàng loạt (1)' }).click();
-    await expect(page.locator('main')).toContainText('clipboard_shoe.png');
+    await expect(page.locator('main')).toContainText(/Ảnh Clipboard|Clipboard/i);
     await studioSelectors.topToolbar(page).getByRole('button', { name: 'Canvas Studio' }).click();
 
     await studioSelectors.exportButton(page).click();

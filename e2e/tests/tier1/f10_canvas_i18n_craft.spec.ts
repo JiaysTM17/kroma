@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { test, expect } from '../../fixtures/testTracker';
 import { ensureAllFixtures } from '../../fixtures/imageFixtures';
-import { attachErrorMonitor, studioSelectors } from '../../helpers/selectors';
+import { attachErrorMonitor, pasteImageFile, studioSelectors } from '../../helpers/selectors';
 
 test.describe('Tier 1 — F10: Studio Canvas Pipeline, Ergonomics, i18n, ARIA & Craft', () => {
   test('T1-F10-01 Canvas cutout, shadow, filter, badge & watermark mutate rendered canvas pixels', { tag: ['@baseline'] }, async ({ page }) => {
@@ -85,20 +85,7 @@ test.describe('Tier 1 — F10: Studio Canvas Pipeline, Ergonomics, i18n, ARIA & 
     await page.goto('/');
     await expect(studioSelectors.emptyState(page)).toBeVisible();
 
-    await page.evaluate((b64) => {
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const file = new File([bytes], 'pasted.png', { type: 'image/png' });
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      const ev = new ClipboardEvent('paste', {
-        clipboardData: dt,
-        bubbles: true,
-        cancelable: true,
-      });
-      window.dispatchEvent(ev);
-    }, pngBase64);
+    await pasteImageFile(page, pngBase64, 'pasted.png');
 
     await expect(studioSelectors.canvas(page)).toBeVisible();
     await expect(studioSelectors.leftSidebar(page)).toContainText('Danh sách sản phẩm (1)');
@@ -205,14 +192,7 @@ test.describe('Tier 1 — F10: Studio Canvas Pipeline, Ergonomics, i18n, ARIA & 
     // Check clipboard paste toast on / has no clipboard emoji
     await page.goto('/');
     const pngBase64 = fs.readFileSync(fixtures.tinyPng).toString('base64');
-    await page.evaluate((b64) => {
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const dt = new DataTransfer();
-      dt.items.add(new File([bytes], 'paste.png', { type: 'image/png' }));
-      window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-    }, pngBase64);
+    await pasteImageFile(page, pngBase64, 'paste.png');
 
     await expect(studioSelectors.canvas(page)).toBeVisible();
     const bodyText = await page.locator('body').innerText();

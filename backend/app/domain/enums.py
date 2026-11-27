@@ -29,6 +29,7 @@ class ErrorCode(str, Enum):
     NOT_FOUND = "NOT_FOUND"
     FORBIDDEN = "FORBIDDEN"
     CONFLICT = "CONFLICT"
+    GONE = "GONE"
     PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
     UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE"
     MIME_SPOOF_DETECTED = "MIME_SPOOF_DETECTED"
@@ -44,3 +45,43 @@ class ErrorCode(str, Enum):
     IMMUTABLE_ASSET_VIOLATION = "IMMUTABLE_ASSET_VIOLATION"
     BACKEND_NOT_CONFIGURED = "BACKEND_NOT_CONFIGURED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+
+
+class BatchStatus(str, Enum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    PARTIAL_FAILED = "partial_failed"
+    FAILED = "failed"
+    CANCEL_REQUESTED = "cancel_requested"
+    CANCELLED = "cancelled"
+
+
+class BatchItemStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class ProofingStatus(str, Enum):
+    PENDING = "pending"
+    IN_REVIEW = "in_review"
+    REVISION_REQUESTED = "revision_requested"
+    APPROVED = "approved"
+    ARCHIVED = "archived"
+
+
+class ProofingAction(str, Enum):
+    COMMENT = "comment"
+    APPROVE = "approve"
+    REQUEST_CHANGE = "request_change"
+
+
+class ProofingDecision(str, Enum):
+    APPROVE = "approve"
+    REQUEST_CHANGE = "request_change"
+    REOPEN = "reopen"
+    ARCHIVE = "archive"
+    REVOKE = "revoke"

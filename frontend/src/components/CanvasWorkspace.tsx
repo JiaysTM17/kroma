@@ -495,7 +495,10 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
 
       {/* Main Content Area: Empty State, Gallery Grid, or Canvas Studio Stage */}
       {!hasAssets ? (
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-8 overflow-y-auto">
+        <div
+          data-testid="empty-canvas-scroll"
+          className="flex-1 flex flex-col items-center p-4 sm:p-8 overflow-y-auto"
+        >
           <EmptyCanvasState lang={lang} preset={preset} onUploadAssets={onUploadAssets} />
         </div>
       ) : viewMode === 'gallery' ? (
@@ -546,7 +549,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
                           {item.hasBackgroundRemoved ? (
                             <span className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <Check className="w-3 h-3" strokeWidth={1.5} />
-                              <span>AI Cutout</span>
+                              <span>{t.gallery_cutout}</span>
                             </span>
                           ) : (
                             <span className="px-2 py-1 rounded text-xs font-medium bg-zinc-200 text-zinc-700">

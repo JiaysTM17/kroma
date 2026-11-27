@@ -64,7 +64,7 @@ export const EmptyCanvasState: React.FC<EmptyCanvasStateProps> = ({
   return (
     <div
       data-testid="empty-canvas-state"
-      className="w-full max-w-2xl mx-auto"
+      className="w-full max-w-2xl mx-auto my-auto"
     >
       <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-6 shadow-sm">
         {/* Top Metadata Bar */}
@@ -97,20 +97,13 @@ export const EmptyCanvasState: React.FC<EmptyCanvasStateProps> = ({
           }}
         />
         <div
-          role="button"
-          tabIndex={0}
+          data-testid="empty-dropzone"
           onDragEnter={handleDragEnter}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              fileInputRef.current?.click();
-            }
-          }}
-          className={`relative rounded-lg border border-dashed p-8 text-center cursor-pointer transition-[border-color,background-color] focus:outline-none focus:ring-2 focus:ring-kroma-600/30 ${
+          className={`relative rounded-lg border border-dashed p-8 text-center cursor-pointer transition-[border-color,background-color] ${
             isDragging
               ? 'border-kroma-600 bg-kroma-50/40'
               : 'border-zinc-300 bg-zinc-50/70 hover:border-zinc-400 hover:bg-zinc-50'
@@ -158,12 +151,12 @@ export const EmptyCanvasState: React.FC<EmptyCanvasStateProps> = ({
           </button>
 
           {/* Quick Paste Hint */}
-          <div className="mt-3 flex items-center gap-1.5 text-[11px] text-zinc-400">
-            <kbd className="px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-600 font-mono text-[10px]">
+          <div className="mt-3 flex items-center justify-center gap-1 text-xs text-zinc-500">
+            <kbd className="px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-600 font-mono text-xs">
               Ctrl
             </kbd>
             <span>+</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-600 font-mono text-[10px]">
+            <kbd className="px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-600 font-mono text-xs">
               V
             </kbd>
             <span>{lang === 'vi' ? 'để dán nhanh ảnh chụp màn hình' : 'to paste screenshot directly'}</span>

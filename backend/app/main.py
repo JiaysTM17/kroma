@@ -20,8 +20,10 @@ from app.routers import presets as legacy_presets_router
 from app.routers import projects as legacy_projects_router
 from app.routers import proofing as proofing_router
 from app.services.asset_service import AssetService
+from app.services.batch_worker import BatchWorkerService
 from app.services.preset_service import PresetService
 from app.services.project_service import ProjectService
+from app.services.proofing_service import ProofingService
 from app.storage.local_fs import LocalFSStore
 from app.storage.sqlite_repo import SQLiteRepo
 
@@ -39,6 +41,7 @@ def build_container(settings: Settings) -> AppContainer:
         repo=repo,
         blob_store=blob_store,
         max_state_bytes=settings.max_state_bytes,
+        exports_dir=settings.exports_dir,
     )
     asset_service = AssetService(
         repo=repo,
@@ -46,6 +49,12 @@ def build_container(settings: Settings) -> AppContainer:
         settings=settings,
     )
     preset_service = PresetService(repo=repo)
+    batch_worker = BatchWorkerService(
+        repo=repo,
+        blob_store=blob_store,
+        settings=settings,
+    )
+    proofing_service = ProofingService(repo=repo)
     return AppContainer(
         settings=settings,
         repo=repo,
@@ -53,6 +62,8 @@ def build_container(settings: Settings) -> AppContainer:
         project_service=project_service,
         asset_service=asset_service,
         preset_service=preset_service,
+        batch_worker=batch_worker,
+        proofing_service=proofing_service,
     )
 
 
@@ -61,7 +72,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        yield
+        container: AppContainer = app.state.container
+        container.batch_worker.start()
+        try:
+            yield
+        finally:
+            container.batch_worker.shutdown(wait=True)
+            container.repo.close()
 
     app = FastAPI(
         title=APP_TITLE,
@@ -173,11 +190,10 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             "mode": "local-first-sqlite",
         }
 
-    # Clean Architecture v1 endpoints (/v1/health, /v1/projects, /v1/presets, /v1/projects/{id}/assets, etc.)
+    # Clean Architecture v1 endpoints (/v1/health, /v1/projects, /v1/presets, /v1/batches, /v1/proofing, etc.)
     app.include_router(v1_router)
 
-    # Proofing & Export endpoints under /v1
-    app.include_router(proofing_router.router, prefix="/v1")
+    # Export endpoints under /v1
     app.include_router(export_router.router, prefix="/v1")
 
     # Studio & compatibility routers under /api/v1

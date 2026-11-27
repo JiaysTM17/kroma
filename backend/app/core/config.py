@@ -44,3 +44,8 @@ class Settings(BaseSettings):
     max_state_bytes: int = 2 * 1024 * 1024
     max_archive_entries: int = 500
     max_archive_uncompressed_bytes: int = 250 * 1024 * 1024
+
+    batch_max_workers: int = 2
+    batch_max_assets_per_job: int = 100
+    batch_max_recipes_per_job: int = 20
+    batch_max_items_per_job: int = 250

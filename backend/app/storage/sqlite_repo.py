@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -8,10 +9,31 @@ from pathlib import Path
 from typing import Any
 
 from app.core.errors import ConflictError, NotFoundError
-from app.core.ids import utc_now_iso
-from app.domain.enums import AssetKind, ImageMime, MarketplaceId
-from app.domain.models import Asset, MarketplacePreset, Project, ProjectState, SafeZone
+from app.core.ids import new_id, utc_now_iso
+from app.domain.enums import (
+    AssetKind,
+    BatchItemStatus,
+    BatchStatus,
+    ImageMime,
+    MarketplaceId,
+    ProofingAction,
+    ProofingStatus,
+)
+from app.domain.models import (
+    Asset,
+    BatchJob,
+    BatchJobItem,
+    MarketplacePreset,
+    Project,
+    ProjectState,
+    ProofingComment,
+    ProofingEvent,
+    ProofingSession,
+    SafeZone,
+)
 from app.domain.presets import CANONICAL_SYSTEM_PRESETS
+from app.domain.rules import compute_batch_progress
+from app.storage.ports import DeletedProjectArtifacts
 
 _ASSET_COLUMNS = (
     "id, project_id, kind, parent_asset_id, variant, filename, mime_type, "
@@ -24,6 +46,43 @@ _PRESET_COLUMNS = (
     "version, aspect_ratio, width, height, formats_json, background_rgb_json, "
     "subject_area_ratio, safe_zone_json, is_system, editable, created_at, updated_at"
 )
+
+_BATCH_JOB_COLUMNS = (
+    "id, project_id, status, total_items, completed_items, failed_items, "
+    "progress, zip_filename, error_message, config_json, created_at, started_at, "
+    "completed_at, updated_at"
+)
+
+_BATCH_ITEM_COLUMNS = (
+    "id, job_id, seq, asset_id, source_asset_id, preset_id, preset_version, "
+    "format, quality, recipe_snapshot_json, status, output_filename, "
+    "output_byte_size, output_width, output_height, error_code, error_message, "
+    "attempts, created_at, started_at, completed_at"
+)
+
+_PROOFING_SESSION_COLUMNS = (
+    "id, project_id, asset_id, project_revision_id, title, client_name, "
+    "status, allow_comments, approved_by, approved_at, expires_at, revoked_at, "
+    "created_at, updated_at"
+)
+
+_PROOFING_COMMENT_COLUMNS = (
+    "id, session_id, author, action, body, pin_x, pin_y, "
+    "resolved, resolved_by, resolved_at, created_at, updated_at"
+)
+
+_PROOFING_EVENT_COLUMNS = (
+    "id, session_id, actor, event_type, from_status, to_status, note, payload_json, created_at"
+)
+
+_LEGACY_PROOFING_STATUS_MAP: dict[str, str] = {
+    "pending": ProofingStatus.PENDING.value,
+    "in_review": ProofingStatus.IN_REVIEW.value,
+    "revision_requested": ProofingStatus.REVISION_REQUESTED.value,
+    "changes_requested": ProofingStatus.REVISION_REQUESTED.value,
+    "approved": ProofingStatus.APPROVED.value,
+    "archived": ProofingStatus.ARCHIVED.value,
+}
 
 _LEGACY_MARKETPLACE_MAP: dict[str, str] = {
     "shopee": MarketplaceId.SHOPEE.value,
@@ -108,6 +167,10 @@ class SQLiteRepo:
                 self._apply_migration_v2(conn)
             if 3 not in applied:
                 self._apply_migration_v3(conn)
+            if 4 not in applied:
+                self._apply_migration_v4(conn)
+            if 5 not in applied:
+                self._apply_migration_v5(conn)
 
             # Ensure canonical system presets are seeded even if v3 ran previously
             self._seed_presets_on_conn(conn, CANONICAL_SYSTEM_PRESETS, utc_now_iso())
@@ -355,6 +418,323 @@ class SQLiteRepo:
             conn.rollback()
             raise
 
+    def _apply_migration_v4(self, conn: sqlite3.Connection) -> None:
+        now = utc_now_iso()
+        try:
+            conn.execute("BEGIN IMMEDIATE;")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS batch_jobs (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    status TEXT NOT NULL DEFAULT 'queued',
+                    total_items INTEGER NOT NULL DEFAULT 0,
+                    completed_items INTEGER NOT NULL DEFAULT 0,
+                    failed_items INTEGER NOT NULL DEFAULT 0,
+                    progress REAL NOT NULL DEFAULT 0.0,
+                    zip_filename TEXT,
+                    error_message TEXT,
+                    config_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL,
+                    started_at TEXT,
+                    completed_at TEXT,
+                    updated_at TEXT NOT NULL
+                );
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_batch_jobs_project_created ON batch_jobs(project_id, created_at DESC);"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_batch_jobs_status ON batch_jobs(status);"
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS batch_job_items (
+                    id TEXT PRIMARY KEY,
+                    job_id TEXT NOT NULL REFERENCES batch_jobs(id) ON DELETE CASCADE,
+                    seq INTEGER NOT NULL,
+                    asset_id TEXT NOT NULL,
+                    source_asset_id TEXT NOT NULL,
+                    preset_id TEXT NOT NULL,
+                    preset_version TEXT NOT NULL,
+                    format TEXT NOT NULL,
+                    quality INTEGER NOT NULL DEFAULT 90,
+                    recipe_snapshot_json TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    output_filename TEXT,
+                    output_byte_size INTEGER NOT NULL DEFAULT 0,
+                    output_width INTEGER NOT NULL DEFAULT 0,
+                    output_height INTEGER NOT NULL DEFAULT 0,
+                    error_code TEXT,
+                    error_message TEXT,
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    started_at TEXT,
+                    completed_at TEXT
+                );
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_batch_job_items_job_seq ON batch_job_items(job_id, seq ASC);"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_batch_job_items_job_status ON batch_job_items(job_id, status);"
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (4, ?);",
+                (now,),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    @staticmethod
+    def _create_proofing_tables_sql() -> tuple[str, ...]:
+        # CRITICAL: proofing_sessions.project_id intentionally omits SQLite REFERENCES projects(id)
+        # so pre-M2 orphan rows (including kroma.db legacy rows and test_storage_sqlite_fs.py proof-orphan)
+        # migrate cleanly with PRAGMA foreign_keys=ON. Runtime checks enforce project existence and
+        # delete_project() cascades proofing_sessions cleanup.
+        return (
+            """
+            CREATE TABLE IF NOT EXISTS proofing_sessions (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                asset_id TEXT REFERENCES assets(id) ON DELETE SET NULL,
+                project_revision_id TEXT,
+                title TEXT NOT NULL,
+                client_name TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                allow_comments INTEGER NOT NULL DEFAULT 1,
+                approved_by TEXT,
+                approved_at TEXT,
+                expires_at TEXT,
+                revoked_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS proofing_comments (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL REFERENCES proofing_sessions(id) ON DELETE CASCADE,
+                author TEXT NOT NULL,
+                action TEXT NOT NULL DEFAULT 'comment',
+                body TEXT NOT NULL,
+                pin_x REAL,
+                pin_y REAL,
+                resolved INTEGER NOT NULL DEFAULT 0,
+                resolved_by TEXT,
+                resolved_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS proofing_events (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL REFERENCES proofing_sessions(id) ON DELETE CASCADE,
+                actor TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                from_status TEXT,
+                to_status TEXT,
+                note TEXT NOT NULL DEFAULT '',
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL
+            );
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_proofing_sessions_project ON proofing_sessions(project_id, created_at DESC);",
+            "CREATE INDEX IF NOT EXISTS idx_proofing_sessions_project_status ON proofing_sessions(project_id, status);",
+            "CREATE INDEX IF NOT EXISTS idx_proofing_comments_session ON proofing_comments(session_id, created_at ASC);",
+            "CREATE INDEX IF NOT EXISTS idx_proofing_events_session ON proofing_events(session_id, created_at ASC);",
+        )
+
+    @staticmethod
+    def _coerce_legacy_pin(raw_x: Any, raw_y: Any) -> tuple[float | None, float | None]:
+        if raw_x is None or raw_y is None:
+            return None, None
+        if isinstance(raw_x, bool) or isinstance(raw_y, bool):
+            return None, None
+        try:
+            fx = float(raw_x)
+            fy = float(raw_y)
+        except (TypeError, ValueError):
+            return None, None
+        if not (math.isfinite(fx) and math.isfinite(fy)):
+            return None, None
+        if not (0.0 <= fx <= 1.0 and 0.0 <= fy <= 1.0):
+            return None, None
+        return fx, fy
+
+    def _apply_migration_v5(self, conn: sqlite3.Connection) -> None:
+        now = utc_now_iso()
+        try:
+            conn.execute("BEGIN IMMEDIATE;")
+            proofing_exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='proofing_sessions';"
+            ).fetchone()
+
+            migrated_legacy = False
+            if proofing_exists is not None:
+                cols = {
+                    str(r["name"])
+                    for r in conn.execute("PRAGMA table_info(proofing_sessions);").fetchall()
+                }
+                if "feedback_json" in cols or "updated_at" not in cols:
+                    conn.execute(
+                        "ALTER TABLE proofing_sessions RENAME TO _legacy_proofing_sessions_v0;"
+                    )
+                    migrated_legacy = True
+
+            for stmt in self._create_proofing_tables_sql():
+                conn.execute(stmt)
+
+            if migrated_legacy:
+                legacy_rows = conn.execute(
+                    "SELECT * FROM _legacy_proofing_sessions_v0;"
+                ).fetchall()
+                seen_comment_ids: set[str] = set()
+                for row in legacy_rows:
+                    session_id = str(row["id"])
+                    project_id = str(row["project_id"])
+                    title = str(row["title"] or "Proofing Session")
+                    client_name = (
+                        str(row["client_name"]) if row["client_name"] is not None else None
+                    )
+                    raw_status = str(row["status"] or "pending").strip().lower()
+                    mapped_status = _LEGACY_PROOFING_STATUS_MAP.get(
+                        raw_status, ProofingStatus.PENDING.value
+                    )
+                    allow_comments = 1 if row["allow_comments"] is None else int(bool(row["allow_comments"]))
+                    created_at = str(row["created_at"] or now)
+
+                    raw_fb = row["feedback_json"] if "feedback_json" in row.keys() else "[]"
+                    try:
+                        parsed_fb = json.loads(str(raw_fb or "[]"))
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        parsed_fb = []
+                    if not isinstance(parsed_fb, list):
+                        parsed_fb = []
+
+                    latest_ts = created_at
+                    approved_by: str | None = None
+                    approved_at: str | None = None
+                    comment_rows: list[tuple[Any, ...]] = []
+
+                    for item in parsed_fb:
+                        if not isinstance(item, dict):
+                            continue
+                        raw_cid = str(item.get("id") or f"fb_{new_id()[:8]}")
+                        cid = raw_cid if raw_cid not in seen_comment_ids else f"{raw_cid}_{new_id()[:6]}"
+                        seen_comment_ids.add(cid)
+
+                        author = str(item.get("author") or "Client")
+                        raw_action = str(item.get("action") or "comment").strip().lower()
+                        if raw_action not in {
+                            ProofingAction.COMMENT.value,
+                            ProofingAction.APPROVE.value,
+                            ProofingAction.REQUEST_CHANGE.value,
+                        }:
+                            raw_action = ProofingAction.COMMENT.value
+
+                        body = str(
+                            item["comment"]
+                            if "comment" in item and item["comment"] is not None
+                            else item.get("body") or ""
+                        )
+                        pin_x, pin_y = self._coerce_legacy_pin(
+                            item.get("pin_x"), item.get("pin_y")
+                        )
+                        item_created = str(item.get("created_at") or created_at)
+                        if item_created > latest_ts:
+                            latest_ts = item_created
+
+                        if (
+                            mapped_status == ProofingStatus.APPROVED.value
+                            and raw_action == ProofingAction.APPROVE.value
+                        ):
+                            approved_by = author
+                            approved_at = item_created
+
+                        comment_rows.append(
+                            (
+                                cid,
+                                session_id,
+                                author,
+                                raw_action,
+                                body,
+                                pin_x,
+                                pin_y,
+                                0,
+                                None,
+                                None,
+                                item_created,
+                                item_created,
+                            )
+                        )
+
+                    conn.execute(
+                        f"""
+                        INSERT INTO proofing_sessions ({_PROOFING_SESSION_COLUMNS})
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                        """,
+                        (
+                            session_id,
+                            project_id,
+                            None,
+                            None,
+                            title,
+                            client_name,
+                            mapped_status,
+                            allow_comments,
+                            approved_by,
+                            approved_at,
+                            None,
+                            None,
+                            created_at,
+                            latest_ts,
+                        ),
+                    )
+                    for c_params in comment_rows:
+                        conn.execute(
+                            f"""
+                            INSERT INTO proofing_comments ({_PROOFING_COMMENT_COLUMNS})
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                            """,
+                            c_params,
+                        )
+                    conn.execute(
+                        f"""
+                        INSERT INTO proofing_events ({_PROOFING_EVENT_COLUMNS})
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                        """,
+                        (
+                            new_id(),
+                            session_id,
+                            "system",
+                            "session_migrated",
+                            None,
+                            mapped_status,
+                            "Migrated from legacy proofing_sessions",
+                            json.dumps(
+                                {"migrated_comments": len(comment_rows)},
+                                separators=(",", ":"),
+                            ),
+                            created_at,
+                        ),
+                    )
+                conn.execute("DROP TABLE _legacy_proofing_sessions_v0;")
+
+            conn.execute(
+                "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (5, ?);",
+                (now,),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
     def _insert_system_presets_on_conn(
         self,
         conn: sqlite3.Connection,
@@ -469,7 +849,36 @@ class SQLiteRepo:
             ).fetchone()
             return self._row_to_project(row) if row is not None else None
 
-    def delete_project(self, project_id: str) -> list[str] | None:
+    def update_project_name(
+        self, project_id: str, name: str, updated_at: str
+    ) -> Project | None:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            cursor = conn.execute(
+                """
+                UPDATE projects
+                SET name = ?, updated_at = ?
+                WHERE id = ?;
+                """,
+                (name, updated_at, project_id),
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return None
+            row = conn.execute(
+                """
+                SELECT id, name, description, active_variant, created_at, updated_at
+                FROM projects
+                WHERE id = ?;
+                """,
+                (project_id,),
+            ).fetchone()
+            conn.commit()
+            return self._row_to_project(row) if row is not None else None
+
+    def delete_project_with_artifacts(
+        self, project_id: str
+    ) -> DeletedProjectArtifacts | None:
         with self._session() as conn:
             conn.execute("BEGIN IMMEDIATE;")
             exists = conn.execute(
@@ -486,6 +895,21 @@ class SQLiteRepo:
             ).fetchall()
             storage_keys = [str(row["storage_key"]) for row in key_rows]
 
+            batch_job_ids: list[str] = []
+            zip_filenames: list[str] = []
+            has_batches = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='batch_jobs';"
+            ).fetchone()
+            if has_batches is not None:
+                batch_rows = conn.execute(
+                    "SELECT id, zip_filename FROM batch_jobs WHERE project_id = ?;",
+                    (project_id,),
+                ).fetchall()
+                for b_row in batch_rows:
+                    batch_job_ids.append(str(b_row["id"]))
+                    if b_row["zip_filename"]:
+                        zip_filenames.append(str(b_row["zip_filename"]))
+
             has_proofing = conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='proofing_sessions';"
             ).fetchone()
@@ -494,7 +918,15 @@ class SQLiteRepo:
 
             conn.execute("DELETE FROM projects WHERE id = ?;", (project_id,))
             conn.commit()
-            return storage_keys
+            return DeletedProjectArtifacts(
+                storage_keys=storage_keys,
+                batch_job_ids=batch_job_ids,
+                zip_filenames=zip_filenames,
+            )
+
+    def delete_project(self, project_id: str) -> list[str] | None:
+        artifacts = self.delete_project_with_artifacts(project_id)
+        return artifacts.storage_keys if artifacts is not None else None
 
     def get_project_state(self, project_id: str) -> ProjectState | None:
         with self._session() as conn:
@@ -561,6 +993,67 @@ class SQLiteRepo:
                 """,
                 (state.active_variant, state.updated_at, state.project_id),
             )
+
+            # BR14: Advancing revision_id invalidates approved proofing sessions on older revisions
+            if state.revision_id != current_revision:
+                has_proofing = conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='proofing_sessions';"
+                ).fetchone()
+                if has_proofing is not None:
+                    approved_rows = conn.execute(
+                        """
+                        SELECT id, project_revision_id
+                        FROM proofing_sessions
+                        WHERE project_id = ?
+                          AND status = 'approved'
+                          AND revoked_at IS NULL
+                          AND (project_revision_id IS NULL OR project_revision_id != ?);
+                        """,
+                        (state.project_id, state.revision_id),
+                    ).fetchall()
+                    for p_row in approved_rows:
+                        session_id = str(p_row["id"])
+                        prev_session_rev = (
+                            str(p_row["project_revision_id"])
+                            if p_row["project_revision_id"] is not None
+                            else None
+                        )
+                        conn.execute(
+                            """
+                            UPDATE proofing_sessions
+                            SET status = 'pending',
+                                approved_by = NULL,
+                                approved_at = NULL,
+                                updated_at = ?
+                            WHERE id = ?;
+                            """,
+                            (state.updated_at, session_id),
+                        )
+                        conn.execute(
+                            f"""
+                            INSERT INTO proofing_events ({_PROOFING_EVENT_COLUMNS})
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                            """,
+                            (
+                                new_id(),
+                                session_id,
+                                "system",
+                                "project_revision_updated",
+                                ProofingStatus.APPROVED.value,
+                                ProofingStatus.PENDING.value,
+                                f"Project state advanced to revision {state.revision_id}",
+                                json.dumps(
+                                    {
+                                        "previous_revision_id": prev_session_rev,
+                                        "state_previous_revision_id": current_revision,
+                                        "new_revision_id": state.revision_id,
+                                    },
+                                    separators=(",", ":"),
+                                ),
+                                state.updated_at,
+                            ),
+                        )
+
             conn.commit()
         return state
 
@@ -980,4 +1473,952 @@ class SQLiteRepo:
             is_system=bool(row["is_system"]),
             created_at=str(row["created_at"]),
             updated_at=str(row["updated_at"]),
+        )
+
+    # ------------------------------------------------------------------
+    # Batch jobs & items
+    # ------------------------------------------------------------------
+
+    def create_batch_job(self, job: BatchJob, items: list[BatchJobItem]) -> BatchJob:
+        config_json = json.dumps(job.config, separators=(",", ":"), ensure_ascii=False)
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            conn.execute(
+                f"""
+                INSERT INTO batch_jobs ({_BATCH_JOB_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    job.id,
+                    job.project_id,
+                    job.status.value,
+                    job.total_items,
+                    job.completed_items,
+                    job.failed_items,
+                    job.progress,
+                    job.zip_filename,
+                    job.error_message,
+                    config_json,
+                    job.created_at,
+                    job.started_at,
+                    job.completed_at,
+                    job.updated_at,
+                ),
+            )
+            for item in items:
+                snapshot_json = json.dumps(
+                    item.recipe_snapshot, separators=(",", ":"), ensure_ascii=False
+                )
+                conn.execute(
+                    f"""
+                    INSERT INTO batch_job_items ({_BATCH_ITEM_COLUMNS})
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        item.id,
+                        item.job_id,
+                        item.seq,
+                        item.asset_id,
+                        item.source_asset_id,
+                        item.preset_id,
+                        item.preset_version,
+                        item.format,
+                        item.quality,
+                        snapshot_json,
+                        item.status.value,
+                        item.output_filename,
+                        item.output_byte_size,
+                        item.output_width,
+                        item.output_height,
+                        item.error_code,
+                        item.error_message,
+                        item.attempts,
+                        item.created_at,
+                        item.started_at,
+                        item.completed_at,
+                    ),
+                )
+            conn.commit()
+        return job
+
+    def get_batch_job(self, job_id: str) -> tuple[BatchJob, list[BatchJobItem]] | None:
+        with self._session() as conn:
+            row = conn.execute(
+                f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            item_rows = conn.execute(
+                f"""
+                SELECT {_BATCH_ITEM_COLUMNS}
+                FROM batch_job_items
+                WHERE job_id = ?
+                ORDER BY seq ASC;
+                """,
+                (job_id,),
+            ).fetchall()
+            return self._row_to_batch_job(row), [
+                self._row_to_batch_item(ir) for ir in item_rows
+            ]
+
+    def list_project_batch_jobs(self, project_id: str) -> list[BatchJob]:
+        with self._session() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT {_BATCH_JOB_COLUMNS}
+                FROM batch_jobs
+                WHERE project_id = ?
+                ORDER BY created_at DESC, id DESC;
+                """,
+                (project_id,),
+            ).fetchall()
+            return [self._row_to_batch_job(row) for row in rows]
+
+    def list_unfinished_batch_jobs(self) -> list[BatchJob]:
+        with self._session() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT {_BATCH_JOB_COLUMNS}
+                FROM batch_jobs
+                WHERE status IN ('queued', 'running', 'cancel_requested')
+                ORDER BY created_at ASC, id ASC;
+                """
+            ).fetchall()
+            return [self._row_to_batch_job(row) for row in rows]
+
+    def claim_batch_job_running(self, job_id: str, started_at: str) -> BatchJob | None:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            row = conn.execute(
+                f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return None
+            effective_started = str(row["started_at"]) if row["started_at"] else started_at
+            conn.execute(
+                """
+                UPDATE batch_jobs
+                SET status = ?,
+                    started_at = ?,
+                    updated_at = ?
+                WHERE id = ?;
+                """,
+                (BatchStatus.RUNNING.value, effective_started, started_at, job_id),
+            )
+            updated = conn.execute(
+                f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            conn.commit()
+            return self._row_to_batch_job(updated) if updated is not None else None
+
+    def reset_running_batch_items_to_pending(self, job_id: str, updated_at: str) -> None:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            conn.execute(
+                """
+                UPDATE batch_job_items
+                SET status = 'pending', started_at = NULL
+                WHERE job_id = ? AND status = 'running';
+                """,
+                (job_id,),
+            )
+            conn.execute(
+                """
+                UPDATE batch_jobs
+                SET status = 'queued', updated_at = ?
+                WHERE id = ? AND status = 'running';
+                """,
+                (updated_at, job_id),
+            )
+            conn.commit()
+
+    def _recompute_batch_counters_on_conn(
+        self, conn: sqlite3.Connection, job_id: str, updated_at: str
+    ) -> tuple[int, int, int, int, float]:
+        counts_row = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS total_cnt,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_cnt,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_cnt,
+                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_cnt
+            FROM batch_job_items
+            WHERE job_id = ?;
+            """,
+            (job_id,),
+        ).fetchone()
+        total = int(counts_row["total_cnt"] or 0)
+        completed = int(counts_row["completed_cnt"] or 0)
+        failed = int(counts_row["failed_cnt"] or 0)
+        cancelled = int(counts_row["cancelled_cnt"] or 0)
+        progress = compute_batch_progress(total, completed, failed, cancelled)
+        conn.execute(
+            """
+            UPDATE batch_jobs
+            SET completed_items = ?,
+                failed_items = ?,
+                progress = ?,
+                updated_at = ?
+            WHERE id = ?;
+            """,
+            (completed, failed, progress, updated_at, job_id),
+        )
+        return total, completed, failed, cancelled, progress
+
+    def update_batch_job_item(self, item: BatchJobItem) -> BatchJobItem:
+        now = utc_now_iso()
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            cursor = conn.execute(
+                """
+                UPDATE batch_job_items
+                SET status = ?,
+                    output_filename = ?,
+                    output_byte_size = ?,
+                    output_width = ?,
+                    output_height = ?,
+                    error_code = ?,
+                    error_message = ?,
+                    attempts = ?,
+                    started_at = ?,
+                    completed_at = ?
+                WHERE id = ?;
+                """,
+                (
+                    item.status.value,
+                    item.output_filename,
+                    item.output_byte_size,
+                    item.output_width,
+                    item.output_height,
+                    item.error_code,
+                    item.error_message,
+                    item.attempts,
+                    item.started_at,
+                    item.completed_at,
+                    item.id,
+                ),
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                raise NotFoundError(f"Batch item '{item.id}' not found")
+            self._recompute_batch_counters_on_conn(conn, item.job_id, now)
+            conn.commit()
+        return item
+
+    def request_batch_job_cancel(
+        self, job_id: str, updated_at: str
+    ) -> tuple[BatchJob, list[BatchJobItem]] | None:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            row = conn.execute(
+                f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return None
+
+            current_status = BatchStatus(str(row["status"]))
+            if current_status in (
+                BatchStatus.COMPLETED,
+                BatchStatus.PARTIAL_FAILED,
+                BatchStatus.FAILED,
+            ):
+                conn.rollback()
+                raise ConflictError(
+                    f"Batch job '{job_id}' has already finished with status '{current_status.value}'"
+                )
+
+            if current_status == BatchStatus.QUEUED:
+                conn.execute(
+                    """
+                    UPDATE batch_job_items
+                    SET status = 'cancelled', completed_at = ?
+                    WHERE job_id = ? AND status = 'pending';
+                    """,
+                    (updated_at, job_id),
+                )
+                self._recompute_batch_counters_on_conn(conn, job_id, updated_at)
+                conn.execute(
+                    """
+                    UPDATE batch_jobs
+                    SET status = 'cancelled',
+                        completed_at = ?,
+                        updated_at = ?
+                    WHERE id = ?;
+                    """,
+                    (updated_at, updated_at, job_id),
+                )
+            elif current_status == BatchStatus.RUNNING:
+                conn.execute(
+                    """
+                    UPDATE batch_jobs
+                    SET status = 'cancel_requested',
+                        updated_at = ?
+                    WHERE id = ?;
+                    """,
+                    (updated_at, job_id),
+                )
+
+            job_row = conn.execute(
+                f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            item_rows = conn.execute(
+                f"""
+                SELECT {_BATCH_ITEM_COLUMNS}
+                FROM batch_job_items
+                WHERE job_id = ?
+                ORDER BY seq ASC;
+                """,
+                (job_id,),
+            ).fetchall()
+            conn.commit()
+            if job_row is None:
+                return None
+            return self._row_to_batch_job(job_row), [
+                self._row_to_batch_item(ir) for ir in item_rows
+            ]
+
+    def finalize_batch_job(
+        self,
+        job_id: str,
+        *,
+        status: BatchStatus,
+        zip_filename: str | None,
+        error_message: str | None,
+        completed_at: str | None,
+        updated_at: str,
+        cancel_pending_items: bool = False,
+    ) -> tuple[BatchJob, list[BatchJobItem]] | None:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            row = conn.execute(
+                "SELECT 1 FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return None
+
+            if cancel_pending_items:
+                conn.execute(
+                    """
+                    UPDATE batch_job_items
+                    SET status = 'cancelled', completed_at = ?
+                    WHERE job_id = ? AND status IN ('pending', 'running');
+                    """,
+                    (updated_at, job_id),
+                )
+
+            self._recompute_batch_counters_on_conn(conn, job_id, updated_at)
+            conn.execute(
+                """
+                UPDATE batch_jobs
+                SET status = ?,
+                    zip_filename = ?,
+                    error_message = ?,
+                    completed_at = ?,
+                    updated_at = ?
+                WHERE id = ?;
+                """,
+                (
+                    status.value,
+                    zip_filename,
+                    error_message,
+                    completed_at,
+                    updated_at,
+                    job_id,
+                ),
+            )
+            job_row = conn.execute(
+                f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            item_rows = conn.execute(
+                f"""
+                SELECT {_BATCH_ITEM_COLUMNS}
+                FROM batch_job_items
+                WHERE job_id = ?
+                ORDER BY seq ASC;
+                """,
+                (job_id,),
+            ).fetchall()
+            conn.commit()
+            if job_row is None:
+                return None
+            return self._row_to_batch_job(job_row), [
+                self._row_to_batch_item(ir) for ir in item_rows
+            ]
+
+    def reset_batch_job_for_retry(
+        self, job_id: str, updated_at: str
+    ) -> tuple[BatchJob, list[BatchJobItem]] | None:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            row = conn.execute(
+                f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return None
+
+            current_status = BatchStatus(str(row["status"]))
+            if current_status not in (
+                BatchStatus.FAILED,
+                BatchStatus.PARTIAL_FAILED,
+                BatchStatus.CANCELLED,
+            ):
+                conn.rollback()
+                raise ConflictError(
+                    f"Batch job '{job_id}' cannot be retried from status '{current_status.value}'"
+                )
+
+            retryable_cnt = conn.execute(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM batch_job_items
+                WHERE job_id = ? AND status IN ('failed', 'cancelled');
+                """,
+                (job_id,),
+            ).fetchone()
+            if int(retryable_cnt["cnt"] or 0) == 0:
+                conn.rollback()
+                raise ConflictError(f"Batch job '{job_id}' has no failed or cancelled items to retry")
+
+            conn.execute(
+                """
+                UPDATE batch_job_items
+                SET status = 'pending',
+                    error_code = NULL,
+                    error_message = NULL,
+                    started_at = NULL,
+                    completed_at = NULL
+                WHERE job_id = ? AND status IN ('failed', 'cancelled');
+                """,
+                (job_id,),
+            )
+            self._recompute_batch_counters_on_conn(conn, job_id, updated_at)
+            conn.execute(
+                """
+                UPDATE batch_jobs
+                SET status = 'queued',
+                    zip_filename = NULL,
+                    error_message = NULL,
+                    completed_at = NULL,
+                    updated_at = ?
+                WHERE id = ?;
+                """,
+                (updated_at, job_id),
+            )
+            job_row = conn.execute(
+                f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
+                (job_id,),
+            ).fetchone()
+            item_rows = conn.execute(
+                f"""
+                SELECT {_BATCH_ITEM_COLUMNS}
+                FROM batch_job_items
+                WHERE job_id = ?
+                ORDER BY seq ASC;
+                """,
+                (job_id,),
+            ).fetchall()
+            conn.commit()
+            if job_row is None:
+                return None
+            return self._row_to_batch_job(job_row), [
+                self._row_to_batch_item(ir) for ir in item_rows
+            ]
+
+    # ------------------------------------------------------------------
+    # Proofing sessions, comments & events
+    # ------------------------------------------------------------------
+
+    def create_proofing_session(
+        self, session: ProofingSession, initial_event: ProofingEvent
+    ) -> ProofingSession:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            conn.execute(
+                f"""
+                INSERT INTO proofing_sessions ({_PROOFING_SESSION_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    session.id,
+                    session.project_id,
+                    session.asset_id,
+                    session.project_revision_id,
+                    session.title,
+                    session.client_name,
+                    session.status.value,
+                    1 if session.allow_comments else 0,
+                    session.approved_by,
+                    session.approved_at,
+                    session.expires_at,
+                    session.revoked_at,
+                    session.created_at,
+                    session.updated_at,
+                ),
+            )
+            conn.execute(
+                f"""
+                INSERT INTO proofing_events ({_PROOFING_EVENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    initial_event.id,
+                    initial_event.session_id,
+                    initial_event.actor,
+                    initial_event.event_type,
+                    initial_event.from_status,
+                    initial_event.to_status,
+                    initial_event.note,
+                    json.dumps(
+                        initial_event.payload, separators=(",", ":"), ensure_ascii=False
+                    ),
+                    initial_event.created_at,
+                ),
+            )
+            loaded = self._load_proofing_session_on_conn(conn, session.id)
+            conn.commit()
+            return loaded or session
+
+    def get_proofing_session(self, session_id: str) -> ProofingSession | None:
+        with self._session() as conn:
+            return self._load_proofing_session_on_conn(conn, session_id)
+
+    def list_project_proofing_sessions(self, project_id: str) -> list[ProofingSession]:
+        with self._session() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT {_PROOFING_SESSION_COLUMNS}
+                FROM proofing_sessions
+                WHERE project_id = ?
+                ORDER BY created_at DESC, id DESC;
+                """,
+                (project_id,),
+            ).fetchall()
+            sessions: list[ProofingSession] = []
+            for row in rows:
+                sid = str(row["id"])
+                comments = self._load_proofing_comments_on_conn(conn, sid)
+                events = self._load_proofing_events_on_conn(conn, sid)
+                sessions.append(self._row_to_proofing_session(row, comments, events))
+            return sessions
+
+    def add_proofing_comment(
+        self,
+        session_id: str,
+        comment: ProofingComment,
+        *,
+        new_status: ProofingStatus,
+        approved_by: str | None,
+        approved_at: str | None,
+        updated_at: str,
+        event: ProofingEvent,
+    ) -> ProofingSession:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            row = conn.execute(
+                "SELECT 1 FROM proofing_sessions WHERE id = ?;",
+                (session_id,),
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                raise NotFoundError(f"Proofing session '{session_id}' not found")
+
+            conn.execute(
+                f"""
+                INSERT INTO proofing_comments ({_PROOFING_COMMENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    comment.id,
+                    comment.session_id,
+                    comment.author,
+                    comment.action.value,
+                    comment.body,
+                    comment.pin_x,
+                    comment.pin_y,
+                    1 if comment.resolved else 0,
+                    comment.resolved_by,
+                    comment.resolved_at,
+                    comment.created_at,
+                    comment.updated_at,
+                ),
+            )
+            conn.execute(
+                """
+                UPDATE proofing_sessions
+                SET status = ?,
+                    approved_by = ?,
+                    approved_at = ?,
+                    updated_at = ?
+                WHERE id = ?;
+                """,
+                (new_status.value, approved_by, approved_at, updated_at, session_id),
+            )
+            conn.execute(
+                f"""
+                INSERT INTO proofing_events ({_PROOFING_EVENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    event.id,
+                    event.session_id,
+                    event.actor,
+                    event.event_type,
+                    event.from_status,
+                    event.to_status,
+                    event.note,
+                    json.dumps(event.payload, separators=(",", ":"), ensure_ascii=False),
+                    event.created_at,
+                ),
+            )
+            loaded = self._load_proofing_session_on_conn(conn, session_id)
+            conn.commit()
+            if loaded is None:
+                raise NotFoundError(f"Proofing session '{session_id}' not found")
+            return loaded
+
+    def get_proofing_comment(
+        self, session_id: str, comment_id: str
+    ) -> ProofingComment | None:
+        with self._session() as conn:
+            row = conn.execute(
+                f"""
+                SELECT {_PROOFING_COMMENT_COLUMNS}
+                FROM proofing_comments
+                WHERE id = ? AND session_id = ?;
+                """,
+                (comment_id, session_id),
+            ).fetchone()
+            return self._row_to_proofing_comment(row) if row is not None else None
+
+    def update_proofing_comment(
+        self,
+        comment: ProofingComment,
+        *,
+        updated_at: str,
+        event: ProofingEvent,
+    ) -> ProofingComment:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            cursor = conn.execute(
+                """
+                UPDATE proofing_comments
+                SET body = ?,
+                    resolved = ?,
+                    resolved_by = ?,
+                    resolved_at = ?,
+                    updated_at = ?
+                WHERE id = ? AND session_id = ?;
+                """,
+                (
+                    comment.body,
+                    1 if comment.resolved else 0,
+                    comment.resolved_by,
+                    comment.resolved_at,
+                    comment.updated_at,
+                    comment.id,
+                    comment.session_id,
+                ),
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                raise NotFoundError(f"Proofing comment '{comment.id}' not found")
+            conn.execute(
+                "UPDATE proofing_sessions SET updated_at = ? WHERE id = ?;",
+                (updated_at, comment.session_id),
+            )
+            conn.execute(
+                f"""
+                INSERT INTO proofing_events ({_PROOFING_EVENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    event.id,
+                    event.session_id,
+                    event.actor,
+                    event.event_type,
+                    event.from_status,
+                    event.to_status,
+                    event.note,
+                    json.dumps(event.payload, separators=(",", ":"), ensure_ascii=False),
+                    event.created_at,
+                ),
+            )
+            row = conn.execute(
+                f"""
+                SELECT {_PROOFING_COMMENT_COLUMNS}
+                FROM proofing_comments
+                WHERE id = ? AND session_id = ?;
+                """,
+                (comment.id, comment.session_id),
+            ).fetchone()
+            conn.commit()
+            return self._row_to_proofing_comment(row) if row is not None else comment
+
+    def delete_proofing_comment(
+        self,
+        session_id: str,
+        comment_id: str,
+        *,
+        updated_at: str,
+        event: ProofingEvent,
+    ) -> bool:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            cursor = conn.execute(
+                "DELETE FROM proofing_comments WHERE id = ? AND session_id = ?;",
+                (comment_id, session_id),
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return False
+            conn.execute(
+                "UPDATE proofing_sessions SET updated_at = ? WHERE id = ?;",
+                (updated_at, session_id),
+            )
+            conn.execute(
+                f"""
+                INSERT INTO proofing_events ({_PROOFING_EVENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    event.id,
+                    event.session_id,
+                    event.actor,
+                    event.event_type,
+                    event.from_status,
+                    event.to_status,
+                    event.note,
+                    json.dumps(event.payload, separators=(",", ":"), ensure_ascii=False),
+                    event.created_at,
+                ),
+            )
+            conn.commit()
+            return True
+
+    def apply_proofing_decision(
+        self,
+        session_id: str,
+        *,
+        new_status: ProofingStatus,
+        approved_by: str | None,
+        approved_at: str | None,
+        revoked_at: str | None,
+        updated_at: str,
+        event: ProofingEvent,
+    ) -> ProofingSession:
+        with self._session() as conn:
+            conn.execute("BEGIN IMMEDIATE;")
+            cursor = conn.execute(
+                """
+                UPDATE proofing_sessions
+                SET status = ?,
+                    approved_by = ?,
+                    approved_at = ?,
+                    revoked_at = ?,
+                    updated_at = ?
+                WHERE id = ?;
+                """,
+                (
+                    new_status.value,
+                    approved_by,
+                    approved_at,
+                    revoked_at,
+                    updated_at,
+                    session_id,
+                ),
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                raise NotFoundError(f"Proofing session '{session_id}' not found")
+            conn.execute(
+                f"""
+                INSERT INTO proofing_events ({_PROOFING_EVENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    event.id,
+                    event.session_id,
+                    event.actor,
+                    event.event_type,
+                    event.from_status,
+                    event.to_status,
+                    event.note,
+                    json.dumps(event.payload, separators=(",", ":"), ensure_ascii=False),
+                    event.created_at,
+                ),
+            )
+            loaded = self._load_proofing_session_on_conn(conn, session_id)
+            conn.commit()
+            if loaded is None:
+                raise NotFoundError(f"Proofing session '{session_id}' not found")
+            return loaded
+
+    def _load_proofing_comments_on_conn(
+        self, conn: sqlite3.Connection, session_id: str
+    ) -> tuple[ProofingComment, ...]:
+        rows = conn.execute(
+            f"""
+            SELECT {_PROOFING_COMMENT_COLUMNS}
+            FROM proofing_comments
+            WHERE session_id = ?
+            ORDER BY created_at ASC, id ASC;
+            """,
+            (session_id,),
+        ).fetchall()
+        return tuple(self._row_to_proofing_comment(r) for r in rows)
+
+    def _load_proofing_events_on_conn(
+        self, conn: sqlite3.Connection, session_id: str
+    ) -> tuple[ProofingEvent, ...]:
+        rows = conn.execute(
+            f"""
+            SELECT {_PROOFING_EVENT_COLUMNS}
+            FROM proofing_events
+            WHERE session_id = ?
+            ORDER BY created_at ASC, id ASC;
+            """,
+            (session_id,),
+        ).fetchall()
+        return tuple(self._row_to_proofing_event(r) for r in rows)
+
+    def _load_proofing_session_on_conn(
+        self, conn: sqlite3.Connection, session_id: str
+    ) -> ProofingSession | None:
+        row = conn.execute(
+            f"SELECT {_PROOFING_SESSION_COLUMNS} FROM proofing_sessions WHERE id = ?;",
+            (session_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        comments = self._load_proofing_comments_on_conn(conn, session_id)
+        events = self._load_proofing_events_on_conn(conn, session_id)
+        return self._row_to_proofing_session(row, comments, events)
+
+    @staticmethod
+    def _row_to_batch_job(row: sqlite3.Row) -> BatchJob:
+        raw_cfg = row["config_json"]
+        parsed_cfg = json.loads(str(raw_cfg)) if raw_cfg else {}
+        return BatchJob(
+            id=str(row["id"]),
+            project_id=str(row["project_id"]),
+            status=BatchStatus(str(row["status"])),
+            total_items=int(row["total_items"]),
+            completed_items=int(row["completed_items"]),
+            failed_items=int(row["failed_items"]),
+            progress=float(row["progress"]),
+            zip_filename=str(row["zip_filename"]) if row["zip_filename"] is not None else None,
+            error_message=str(row["error_message"]) if row["error_message"] is not None else None,
+            config=parsed_cfg if isinstance(parsed_cfg, dict) else {},
+            created_at=str(row["created_at"]),
+            started_at=str(row["started_at"]) if row["started_at"] is not None else None,
+            completed_at=str(row["completed_at"]) if row["completed_at"] is not None else None,
+            updated_at=str(row["updated_at"]),
+        )
+
+    @staticmethod
+    def _row_to_batch_item(row: sqlite3.Row) -> BatchJobItem:
+        raw_snap = row["recipe_snapshot_json"]
+        parsed_snap = json.loads(str(raw_snap)) if raw_snap else {}
+        return BatchJobItem(
+            id=str(row["id"]),
+            job_id=str(row["job_id"]),
+            seq=int(row["seq"]),
+            asset_id=str(row["asset_id"]),
+            source_asset_id=str(row["source_asset_id"]),
+            preset_id=str(row["preset_id"]),
+            preset_version=str(row["preset_version"]),
+            format=str(row["format"]),
+            quality=int(row["quality"]),
+            recipe_snapshot=parsed_snap if isinstance(parsed_snap, dict) else {},
+            status=BatchItemStatus(str(row["status"])),
+            output_filename=(
+                str(row["output_filename"]) if row["output_filename"] is not None else None
+            ),
+            output_byte_size=int(row["output_byte_size"] or 0),
+            output_width=int(row["output_width"] or 0),
+            output_height=int(row["output_height"] or 0),
+            error_code=str(row["error_code"]) if row["error_code"] is not None else None,
+            error_message=str(row["error_message"]) if row["error_message"] is not None else None,
+            attempts=int(row["attempts"] or 0),
+            created_at=str(row["created_at"]),
+            started_at=str(row["started_at"]) if row["started_at"] is not None else None,
+            completed_at=str(row["completed_at"]) if row["completed_at"] is not None else None,
+        )
+
+    @staticmethod
+    def _row_to_proofing_comment(row: sqlite3.Row) -> ProofingComment:
+        created_at = str(row["created_at"])
+        updated_at = str(row["updated_at"]) if row["updated_at"] else created_at
+        return ProofingComment(
+            id=str(row["id"]),
+            session_id=str(row["session_id"]),
+            author=str(row["author"]),
+            action=ProofingAction(str(row["action"])),
+            body=str(row["body"]),
+            pin_x=float(row["pin_x"]) if row["pin_x"] is not None else None,
+            pin_y=float(row["pin_y"]) if row["pin_y"] is not None else None,
+            resolved=bool(row["resolved"]),
+            resolved_by=str(row["resolved_by"]) if row["resolved_by"] is not None else None,
+            resolved_at=str(row["resolved_at"]) if row["resolved_at"] is not None else None,
+            created_at=created_at,
+            updated_at=updated_at,
+        )
+
+    @staticmethod
+    def _row_to_proofing_event(row: sqlite3.Row) -> ProofingEvent:
+        raw_payload = row["payload_json"]
+        parsed_payload = json.loads(str(raw_payload)) if raw_payload else {}
+        return ProofingEvent(
+            id=str(row["id"]),
+            session_id=str(row["session_id"]),
+            actor=str(row["actor"]),
+            event_type=str(row["event_type"]),
+            from_status=str(row["from_status"]) if row["from_status"] is not None else None,
+            to_status=str(row["to_status"]) if row["to_status"] is not None else None,
+            note=str(row["note"] or ""),
+            payload=parsed_payload if isinstance(parsed_payload, dict) else {},
+            created_at=str(row["created_at"]),
+        )
+
+    @staticmethod
+    def _row_to_proofing_session(
+        row: sqlite3.Row,
+        comments: tuple[ProofingComment, ...],
+        events: tuple[ProofingEvent, ...],
+    ) -> ProofingSession:
+        created_at = str(row["created_at"])
+        updated_at = str(row["updated_at"]) if row["updated_at"] else created_at
+        return ProofingSession(
+            id=str(row["id"]),
+            project_id=str(row["project_id"]),
+            asset_id=str(row["asset_id"]) if row["asset_id"] is not None else None,
+            project_revision_id=(
+                str(row["project_revision_id"])
+                if row["project_revision_id"] is not None
+                else None
+            ),
+            title=str(row["title"]),
+            client_name=str(row["client_name"]) if row["client_name"] is not None else None,
+            status=ProofingStatus(str(row["status"])),
+            allow_comments=bool(row["allow_comments"]),
+            approved_by=str(row["approved_by"]) if row["approved_by"] is not None else None,
+            approved_at=str(row["approved_at"]) if row["approved_at"] is not None else None,
+            expires_at=str(row["expires_at"]) if row["expires_at"] is not None else None,
+            revoked_at=str(row["revoked_at"]) if row["revoked_at"] is not None else None,
+            created_at=created_at,
+            updated_at=updated_at,
+            comments=comments,
+            events=events,
         )

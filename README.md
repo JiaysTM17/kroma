@@ -164,13 +164,13 @@ kroma/
 │
 ├── backend/                                           # Máy chủ cục bộ FastAPI & Hexagonal Architecture
 │   ├── app/main.py                                    # Điểm khởi chạy API và middleware CORS/Security
-│   ├── app/api/v1/                                    # Tuyến API v1: Projects, Assets, Presets, Health
+│   ├── app/api/v1/                                    # Tuyến API v1: Projects, Assets, Presets, Batches, Proofing, Health
 │   ├── app/routers/                                   # Proofing link và Export ZIP service
 │   ├── app/domain/                                    # Mô hình nghiệp vụ thuần túy (Domain Purity & Rules)
-│   ├── app/services/                                  # Tầng dịch vụ: AssetService, PresetService, ProjectService
+│   ├── app/services/                                  # Tầng dịch vụ: AssetService, PresetService, ProjectService, BatchWorker, ProofingService
 │   ├── app/storage/                                   # Triển khai SQLite WAL, Local FS Blob Store, Ports & Stubs
 │   ├── pyproject.toml                                 # Cấu hình gói và pytest runner
-│   └── tests/                                         # 34 bài kiểm thử tự động E2E & Unit (100% Passing)
+│   └── tests/                                         # 47 bài kiểm thử tự động E2E & Unit (100% Passing)
 │
 ├── e2e/                                               # Khung kiểm thử hộp đen E2E Đa Tầng (Playwright)
 │   ├── tests/tier1/                                   # F01-F10 Functional Spec tests
@@ -213,7 +213,7 @@ python -m venv .venv
 source .venv/bin/activate  # Trên Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Chạy toàn bộ 34 test tự động (100% Pass)
+# Chạy toàn bộ 47 test tự động (100% Pass)
 pytest -v
 
 # Chạy máy chủ phát triển tại cổng 8000
