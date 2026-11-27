@@ -56,26 +56,25 @@
     <circle cx="96" cy="81" r="5" fill="#FFFFFF" opacity="0.9" />
   </g>
 
-  <!-- LOGO WORDMARK: KROMA -->
+  <!-- LOGO WORDMARK: KROMA (Precision Optical Kerning - Cohesive Unified Letterforms) -->
   <g transform="translate(260, 132)">
-    <!-- Custom Drawn Geometric Typography for maximum crispness and balance -->
-    <!-- K -->
+    <!-- K (0 -> 70) -->
     <path d="M 0 10 L 0 -68 L 16 -68 L 16 -37 L 46 -68 L 68 -68 L 31 -30 L 70 10 L 48 10 L 16 -23 L 16 10 Z" fill="#0F172A" />
 
-    <!-- R -->
-    <path d="M 82 10 L 82 -68 L 118 -68 C 137 -68 148 -58 148 -43 C 148 -31 140 -23 128 -20 L 152 10 L 131 10 L 110 -18 L 98 -18 L 98 10 Z M 98 -32 L 116 -32 C 126 -32 132 -37 132 -43 C 132 -50 126 -54 116 -54 L 98 -54 Z" fill="#0F172A" />
+    <!-- R (76 -> 144) -->
+    <path d="M 76 10 L 76 -68 L 112 -68 C 131 -68 142 -58 142 -43 C 142 -31 134 -23 122 -20 L 146 10 L 125 10 L 104 -18 L 92 -18 L 92 10 Z M 92 -32 L 110 -32 C 120 -32 126 -37 126 -43 C 126 -50 120 -54 110 -54 L 92 -54 Z" fill="#0F172A" />
 
-    <!-- O (optical kerning tuned: 12px gap from R) -->
-    <path d="M 205 -29 C 205 -53 188 -70 163 -70 C 138 -70 121 -53 121 -29 C 121 -5 138 12 163 12 C 188 12 205 -5 205 -29 Z M 138 -29 C 138 -45 149 -56 163 -56 C 177 -56 188 -45 188 -29 C 188 -13 177 -2 163 -2 C 149 -2 138 -13 138 -29 Z" transform="translate(43, 0)" fill="#0F172A" />
+    <!-- O (150 -> 226) -->
+    <path d="M 188 -68 C 209.0 -68 226 -50.5 226 -29 C 226 -7.5 209.0 10 188 10 C 167.0 10 150 -7.5 150 -29 C 150 -50.5 167.0 -68 188 -68 Z M 188 -53 C 175.3 -53 165 -42.3 165 -29 C 165 -15.7 175.3 -5 188 -5 C 200.7 -5 211 -15.7 211 -29 C 211 -42.3 200.7 -53 188 -53 Z" fill="#0F172A" />
 
-    <!-- M (optical kerning tuned: 12px gap from O) -->
-    <path d="M 262 10 L 262 -68 L 281 -68 L 302 -20 L 323 -68 L 342 -68 L 342 10 L 326 10 L 326 -40 L 309 0 L 295 0 L 278 -40 L 278 10 Z" transform="translate(-2, 0)" fill="#0F172A" />
+    <!-- M (232 -> 312, seamless tuck into O curve) -->
+    <path d="M 232 10 L 232 -68 L 251 -68 L 272 -20 L 293 -68 L 312 -68 L 312 10 L 296 10 L 296 -40 L 279 0 L 265 0 L 248 -40 L 248 10 Z" fill="#0F172A" />
 
-    <!-- A (optical kerning tuned: 12px gap from M) -->
-    <path d="M 426 10 L 418 -10 L 388 -10 L 380 10 L 363 10 L 395 -68 L 412 -68 L 444 10 Z M 403 -48 L 393 -24 L 413 -24 Z" transform="translate(-11, 0)" fill="#0F172A" />
+    <!-- A (318 -> 399, optical apex align) -->
+    <path d="M 381 10 L 373 -10 L 343 -10 L 335 10 L 318 10 L 350 -68 L 367 -68 L 399 10 Z M 358 -48 L 348 -24 L 368 -24 Z" fill="#0F172A" />
 
     <!-- Chromatic Dot Accent above A/End of wordmark -->
-    <circle cx="442" cy="-60" r="4.5" fill="#06B6D4" />
+    <circle cx="405" cy="-60" r="4.5" fill="#06B6D4" />
   </g>
 
   <!-- SUBTITLE / POSITIONING LINE -->

@@ -11,6 +11,10 @@ import {
   SplitSquareVertical,
   Move,
   RotateCcw,
+  LayoutGrid,
+  Image as ImageIcon,
+  Sparkles,
+  Check,
 } from 'lucide-react';
 import {
   AdjustmentValues,
@@ -35,6 +39,8 @@ import { Language, translations } from '@/lib/i18n';
 interface CanvasWorkspaceProps {
   lang: Language;
   asset: ImageAsset | null;
+  assets?: ImageAsset[];
+  onSelectAsset?: (id: string) => void;
   preset: MarketplacePreset;
   shadow: ShadowConfig;
   adjustments: AdjustmentValues;
@@ -50,6 +56,8 @@ interface CanvasWorkspaceProps {
 export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   lang,
   asset,
+  assets = [],
+  onSelectAsset,
   preset,
   shadow,
   adjustments,
@@ -64,6 +72,13 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   const t = translations[lang];
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const safeTransform = {
+    offsetX: transform?.offsetX ?? 0,
+    offsetY: transform?.offsetY ?? 0,
+    scale: transform?.scale ?? 1,
+  };
+
+  const [viewMode, setViewMode] = useState<'editor' | 'gallery'>('editor');
   const [zoom, setZoom] = useState(1);
   const [bgMode, setBgMode] = useState<'white' | 'dark' | 'checker' | 'warm'>('white');
   const [showSafeZone, setShowSafeZone] = useState(true);
@@ -148,7 +163,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     if (!loadedImg) return;
 
     // 2. Compute Subject Framing
-    const scaleRatio = (preset.subject_area_ratio || 0.82) * transform.scale;
+    const scaleRatio = (preset.subject_area_ratio || 0.82) * safeTransform.scale;
     const maxSubjectW = canvas.width * scaleRatio;
     const maxSubjectH = canvas.height * scaleRatio;
 
@@ -161,8 +176,8 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       drawW = drawH * imgAspect;
     }
 
-    const drawX = (canvas.width - drawW) / 2 + transform.offsetX;
-    const drawY = (canvas.height - drawH) / 2 + (canvas.height * 0.02) + transform.offsetY;
+    const drawX = (canvas.width - drawW) / 2 + safeTransform.offsetX;
+    const drawY = (canvas.height - drawH) / 2 + (canvas.height * 0.02) + safeTransform.offsetY;
 
     // 3. Render Processed Scene (or Split Scene)
     const splitX = canvas.width * splitPos;
@@ -321,9 +336,9 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       const dx = (e.clientX - dragStart.x) / zoom;
       const dy = (e.clientY - dragStart.y) / zoom;
       onTransformChange({
-        ...transform,
-        offsetX: transform.offsetX + dx,
-        offsetY: transform.offsetY + dy,
+        offsetX: safeTransform.offsetX + dx,
+        offsetY: safeTransform.offsetY + dy,
+        scale: safeTransform.scale,
       });
       setDragStart({ x: e.clientX, y: e.clientY });
     }
@@ -338,191 +353,311 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     <div className="flex-1 flex flex-col bg-slate-100 overflow-hidden relative select-none">
       {/* Top Floating Viewport Toolbar */}
       <div className="h-11 border-b border-surface-border bg-surface-light px-4 flex items-center justify-between z-10 shadow-2xs">
-        {/* Preset Info */}
-        <div className="flex items-center gap-2 text-xs">
-          <span className="font-bold text-slate-800">{preset.name_vi}</span>
+        {/* View Mode Switcher & Preset Info */}
+        <div className="flex items-center gap-3 text-xs">
+          {/* Mode Switcher */}
+          <div className="flex items-center rounded-md border border-slate-200 bg-slate-100 p-0.5 text-xs">
+            <button
+              onClick={() => setViewMode('editor')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-medium transition-colors ${
+                viewMode === 'editor'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span>Canvas Studio</span>
+            </button>
+            <button
+              onClick={() => setViewMode('gallery')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-medium transition-colors ${
+                viewMode === 'gallery'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Xem Lưới Hàng Loạt ({assets.length})</span>
+            </button>
+          </div>
+
           <span className="text-slate-300">|</span>
-          <span className="text-slate-500 font-mono text-[11px]">
-            {preset.width} × {preset.height} px ({preset.aspect_ratio})
-          </span>
-        </div>
 
-        {/* View Controls */}
-        <div className="flex items-center gap-2">
-          {/* Before/After Split Slider Toggle */}
-          <button
-            onClick={() => setSplitSliderEnabled(!splitSliderEnabled)}
-            className={`px-2.5 py-1 rounded text-xs flex items-center gap-1.5 font-medium transition-all ${
-              splitSliderEnabled
-                ? 'bg-kroma-600 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 bg-surface-subtle border border-surface-border'
-            }`}
-            title={t.split_slider}
-          >
-            <SplitSquareVertical className="w-3.5 h-3.5" />
-            <span className="text-[11px]">So sánh Before/After</span>
-          </button>
-
-          {/* Transform handles toggle */}
-          <button
-            onClick={() => setShowHandles(!showHandles)}
-            className={`p-1.5 rounded transition-colors ${
-              showHandles
-                ? 'bg-slate-200 text-slate-900'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-            title={t.show_handles}
-          >
-            <Move className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Reset position button */}
-          {(transform.offsetX !== 0 || transform.offsetY !== 0 || transform.scale !== 1) && (
-            <button
-              onClick={() => onTransformChange({ offsetX: 0, offsetY: 0, scale: 1 })}
-              className="p-1.5 text-slate-500 hover:text-slate-900 rounded"
-              title="Đặt lại vị trí căn giữa"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {/* Safe-zone toggle */}
-          <button
-            onClick={() => setShowSafeZone(!showSafeZone)}
-            className={`p-1.5 rounded text-xs flex items-center gap-1 transition-colors ${
-              showSafeZone
-                ? 'bg-cyan-50 text-cyan-700 border border-cyan-200'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-            title={t.safe_zone_toggle}
-          >
-            <span className="text-[11px] font-medium">Safe Zone</span>
-          </button>
-
-          {/* Grid 3x3 toggle */}
-          <button
-            onClick={() => setShowGrid(!showGrid)}
-            className={`p-1.5 rounded transition-colors ${
-              showGrid
-                ? 'bg-slate-200 text-slate-900'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-            title="Lưới bố cục 1/3"
-          >
-            <Grid3X3 className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Studio Backdrops */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded border border-slate-200 text-xs">
-            <button
-              onClick={() => setBgMode('white')}
-              className={`p-1 rounded transition-colors ${
-                bgMode === 'white' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
-              }`}
-              title={t.view_white}
-            >
-              <Sun className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setBgMode('dark')}
-              className={`p-1 rounded transition-colors ${
-                bgMode === 'dark' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
-              }`}
-              title={t.view_dark}
-            >
-              <Moon className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setBgMode('warm')}
-              className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors ${
-                bgMode === 'warm' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
-              }`}
-              title="Studio Podium"
-            >
-              Podium
-            </button>
-            <button
-              onClick={() => setBgMode('checker')}
-              className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
-                bgMode === 'checker' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
-              }`}
-              title={t.view_checkerboard}
-            >
-              PNG
-            </button>
-          </div>
-
-          {/* Zoom controls */}
-          <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
-            <button
-              onClick={() => setZoom((z) => Math.max(0.25, z - 0.15))}
-              className="p-1 text-slate-500 hover:text-slate-900"
-              title="Thu nhỏ"
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-[11px] font-mono text-slate-600 min-w-[36px] text-center">
-              {Math.round(zoom * 100)}%
+          {/* Preset Info */}
+          <div className="hidden lg:flex items-center gap-1.5">
+            <span className="font-bold text-slate-800">{preset.name_vi}</span>
+            <span className="text-slate-500 font-mono text-[11px]">
+              {preset.width} × {preset.height} px ({preset.aspect_ratio})
             </span>
-            <button
-              onClick={() => setZoom((z) => Math.min(3, z + 0.15))}
-              className="p-1 text-slate-500 hover:text-slate-900"
-              title="Phóng to"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setZoom(1)}
-              className="p-1 text-slate-500 hover:text-slate-900"
-              title="Về 100%"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
-      </div>
 
-      {/* Interactive Center Stage */}
-      <div
-        className="flex-1 flex items-center justify-center p-8 overflow-auto relative"
-        onMouseUp={handleMouseUp}
-      >
-        {isRemovingBg && (
-          <div className="absolute inset-0 bg-white/75 backdrop-blur-xs flex flex-col items-center justify-center z-30 gap-2.5">
-            <div className="w-9 h-9 rounded-full border-3 border-kroma-600 border-t-transparent animate-spin" />
-            <p className="text-xs font-bold text-slate-800">{t.removing_bg}</p>
-          </div>
-        )}
+        {/* View Controls (Only active in editor mode) */}
+        {viewMode === 'editor' ? (
+          <div className="flex items-center gap-2">
+            {/* Before/After Split Slider Toggle */}
+            <button
+              onClick={() => setSplitSliderEnabled(!splitSliderEnabled)}
+              className={`px-2.5 py-1 rounded text-xs flex items-center gap-1.5 font-medium transition-all ${
+                splitSliderEnabled
+                  ? 'bg-kroma-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900 bg-surface-subtle border border-surface-border'
+              }`}
+              title={t.split_slider}
+            >
+              <SplitSquareVertical className="w-3.5 h-3.5" />
+              <span className="text-[11px] hidden sm:inline">Before/After</span>
+            </button>
 
-        {!asset ? (
-          <div className="text-center py-24 text-slate-400 text-xs">
-            Vui lòng chọn hoặc tải ảnh từ cột bên trái để bắt đầu xử lý
+            {/* Transform handles toggle */}
+            <button
+              onClick={() => setShowHandles(!showHandles)}
+              className={`p-1.5 rounded transition-colors ${
+                showHandles
+                  ? 'bg-slate-200 text-slate-900'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title={t.show_handles}
+            >
+              <Move className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Reset position button */}
+            {(safeTransform.offsetX !== 0 || safeTransform.offsetY !== 0 || safeTransform.scale !== 1) && (
+              <button
+                onClick={() => onTransformChange({ offsetX: 0, offsetY: 0, scale: 1 })}
+                className="p-1.5 text-slate-500 hover:text-slate-900 rounded"
+                title="Đặt lại vị trí căn giữa"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Safe-zone toggle */}
+            <button
+              onClick={() => setShowSafeZone(!showSafeZone)}
+              className={`p-1.5 rounded text-xs flex items-center gap-1 transition-colors ${
+                showSafeZone
+                  ? 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title={t.safe_zone_toggle}
+            >
+              <span className="text-[11px] font-medium">Safe Zone</span>
+            </button>
+
+            {/* Grid 3x3 toggle */}
+            <button
+              onClick={() => setShowGrid(!showGrid)}
+              className={`p-1.5 rounded transition-colors ${
+                showGrid
+                  ? 'bg-slate-200 text-slate-900'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title="Lưới bố cục 1/3"
+            >
+              <Grid3X3 className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Studio Backdrops */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded border border-slate-200 text-xs">
+              <button
+                onClick={() => setBgMode('white')}
+                className={`p-1 rounded transition-colors ${
+                  bgMode === 'white' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
+                }`}
+                title={t.view_white}
+              >
+                <Sun className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setBgMode('dark')}
+                className={`p-1 rounded transition-colors ${
+                  bgMode === 'dark' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
+                }`}
+                title={t.view_dark}
+              >
+                <Moon className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setBgMode('warm')}
+                className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors ${
+                  bgMode === 'warm' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
+                }`}
+                title="Studio Podium"
+              >
+                Podium
+              </button>
+              <button
+                onClick={() => setBgMode('checker')}
+                className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
+                  bgMode === 'checker' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
+                }`}
+                title={t.view_checkerboard}
+              >
+                PNG
+              </button>
+            </div>
+
+            {/* Zoom controls */}
+            <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
+              <button
+                onClick={() => setZoom((z) => Math.max(0.25, z - 0.15))}
+                className="p-1 text-slate-500 hover:text-slate-900"
+                title="Thu nhỏ"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[11px] font-mono text-slate-600 min-w-[36px] text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={() => setZoom((z) => Math.min(3, z + 0.15))}
+                className="p-1 text-slate-500 hover:text-slate-900"
+                title="Phóng to"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setZoom(1)}
+                className="p-1 text-slate-500 hover:text-slate-900"
+                title="Về 100%"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         ) : (
-          <div
-            style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: 'center center',
-              transition: isDraggingProduct || isDraggingSlider ? 'none' : 'transform 0.1s ease-out',
-            }}
-            className="shadow-2xl rounded-lg overflow-hidden border border-slate-300 relative bg-white"
-          >
-            <canvas
-              ref={canvasRef}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              className={`block max-w-none ${
-                splitSliderEnabled
-                  ? 'cursor-ew-resize'
-                  : isDraggingProduct
-                  ? 'cursor-grabbing'
-                  : 'cursor-grab'
-              }`}
-            />
+          <div className="text-xs text-slate-500 font-medium">
+            Bấm vào bất kỳ sản phẩm nào để mở chế độ biên tập chi tiết
           </div>
         )}
       </div>
+
+      {/* Main Content: Gallery Grid View or Single Canvas Studio View */}
+      {viewMode === 'gallery' ? (
+        <div className="flex-1 p-6 overflow-y-auto bg-slate-50">
+          <div className="max-w-6xl mx-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">
+                  Bộ sưu tập Hàng loạt ({assets.length} sản phẩm)
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Chuẩn hóa theo mẫu sàn: <strong className="text-slate-700">{preset.name_vi} ({preset.width}x{preset.height})</strong>
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded text-xs font-medium bg-kroma-50 text-kroma-700 border border-kroma-200">
+                100% Xử lý Client-Side
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {assets.map((item) => {
+                const isSelected = item.id === asset?.id;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      if (onSelectAsset) onSelectAsset(item.id);
+                      setViewMode('editor');
+                    }}
+                    className={`group rounded-xl border p-3 bg-white shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-kroma-600 ring-2 ring-kroma-500/20'
+                        : 'border-slate-200 hover:border-slate-400'
+                    }`}
+                  >
+                    <div>
+                      {/* Image Preview Container */}
+                      <div className="w-full aspect-square bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center p-3 relative mb-3">
+                        <img
+                          src={item.processedUrl || item.originalUrl}
+                          alt={item.name}
+                          className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
+                        />
+                        {/* Status badge */}
+                        <div className="absolute top-2 right-2">
+                          {item.hasBackgroundRemoved ? (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 shadow-xs">
+                              <Check className="w-2.5 h-2.5" />
+                              <span>AI Cutout</span>
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 text-slate-700">
+                              Ảnh gốc
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Title & metadata */}
+                      <h3 className="text-xs font-semibold text-slate-800 truncate mb-1">
+                        {item.name}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        {item.width} × {item.height} px
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] font-medium text-kroma-600 group-hover:text-kroma-700">
+                        Chỉnh sửa Canvas &rarr;
+                      </span>
+                      {isSelected && (
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          Đang chọn
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Interactive Single Canvas Stage */
+        <div
+          className="flex-1 flex items-center justify-center p-8 overflow-auto relative"
+          onMouseUp={handleMouseUp}
+        >
+          {isRemovingBg && (
+            <div className="absolute inset-0 bg-white/75 backdrop-blur-xs flex flex-col items-center justify-center z-30 gap-2.5">
+              <div className="w-9 h-9 rounded-full border-3 border-kroma-600 border-t-transparent animate-spin" />
+              <p className="text-xs font-bold text-slate-800">{t.removing_bg}</p>
+            </div>
+          )}
+
+          {!asset ? (
+            <div className="text-center py-24 text-slate-400 text-xs">
+              Vui lòng chọn hoặc tải ảnh từ cột bên trái để bắt đầu xử lý
+            </div>
+          ) : (
+            <div
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin: 'center center',
+                transition: isDraggingProduct || isDraggingSlider ? 'none' : 'transform 0.1s ease-out',
+              }}
+              className="shadow-2xl rounded-lg overflow-hidden border border-slate-300 relative bg-white"
+            >
+              <canvas
+                ref={canvasRef}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                className={`block max-w-none ${
+                  splitSliderEnabled
+                    ? 'cursor-ew-resize'
+                    : isDraggingProduct
+                    ? 'cursor-grabbing'
+                    : 'cursor-grab'
+                }`}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

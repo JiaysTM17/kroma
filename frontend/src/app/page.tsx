@@ -237,6 +237,8 @@ export default function StudioPage() {
         <CanvasWorkspace
           lang={lang}
           asset={currentAsset}
+          assets={assets}
+          onSelectAsset={setSelectedAssetId}
           preset={selectedPreset}
           shadow={shadow}
           adjustments={adjustments}

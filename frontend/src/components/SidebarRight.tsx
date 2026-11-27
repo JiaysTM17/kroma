@@ -11,6 +11,9 @@ import {
   Sliders,
   Type,
   Maximize,
+  Layers,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import {
   AdjustmentValues,
@@ -76,12 +79,12 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
   onTransformChange,
 }) => {
   const t = translations[lang];
-  const [activeTab, setActiveTab] = useState<'presets' | 'cutout' | 'shadow' | 'badges' | 'adjust'>('presets');
+  const [activeTab, setActiveTab] = useState<'presets' | 'cutout' | 'shadow' | 'badges' | 'adjust' | 'layers'>('presets');
 
   return (
     <aside className="w-84 border-l border-surface-border bg-surface-light flex flex-col h-[calc(100vh-3.5rem)] select-none">
-      {/* 5-Tab Navigation Bar */}
-      <div className="grid grid-cols-5 border-b border-surface-border bg-surface-subtle text-[11px]">
+      {/* 6-Tab Navigation Bar */}
+      <div className="grid grid-cols-6 border-b border-surface-border bg-surface-subtle text-[11px]">
         <button
           onClick={() => setActiveTab('presets')}
           className={`py-3 px-1 text-center font-medium border-b-2 transition-colors ${
@@ -130,7 +133,17 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          Ánh sáng
+          Chỉnh màu
+        </button>
+        <button
+          onClick={() => setActiveTab('layers')}
+          className={`py-3 px-1 text-center font-medium border-b-2 transition-colors ${
+            activeTab === 'layers'
+              ? 'border-kroma-600 text-kroma-900 bg-surface-light font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          Layer
         </button>
       </div>
 
@@ -618,6 +631,171 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
                 }
                 className="w-full accent-kroma-600 cursor-pointer"
               />
+            </div>
+          </div>
+        )}
+
+        {/* 6. LAYERS TAB */}
+        {activeTab === 'layers' && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1">
+                Ngăn xếp Lớp vẽ (Canvas Layers)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Quản lý bật/tắt hiển thị và kiểm tra thuộc tính từng lớp trên khung vẽ.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {/* Layer 1: Watermark */}
+              <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => onWatermarkChange({ ...watermark, enabled: !watermark.enabled })}
+                    className={`p-1.5 rounded transition-colors ${
+                      watermark.enabled ? 'text-kroma-600 bg-kroma-50 hover:bg-kroma-100' : 'text-slate-400 bg-slate-100 hover:text-slate-600'
+                    }`}
+                    title={watermark.enabled ? 'Ẩn watermark' : 'Hiện watermark'}
+                  >
+                    {watermark.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span>Watermark Chữ ký</span>
+                      {watermark.enabled && (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] bg-emerald-50 text-emerald-700 font-mono font-medium">
+                          BẬT
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate max-w-[130px]">
+                      {watermark.text || 'Chưa đặt nội dung'}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('badges')}
+                  className="text-[11px] text-kroma-600 hover:text-kroma-800 font-medium"
+                >
+                  Sửa &rarr;
+                </button>
+              </div>
+
+              {/* Layer 2: Promo Badge */}
+              <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => onPromoBadgeChange({ ...promoBadge, enabled: !promoBadge.enabled })}
+                    className={`p-1.5 rounded transition-colors ${
+                      promoBadge.enabled ? 'text-kroma-600 bg-kroma-50 hover:bg-kroma-100' : 'text-slate-400 bg-slate-100 hover:text-slate-600'
+                    }`}
+                    title={promoBadge.enabled ? 'Ẩn huy hiệu' : 'Hiện huy hiệu'}
+                  >
+                    {promoBadge.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span>Khung / Huy hiệu</span>
+                      {promoBadge.enabled && (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] bg-amber-50 text-amber-700 font-mono font-medium">
+                          {promoBadge.type.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Vị trí: {promoBadge.position.replace('_', ' ')}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('badges')}
+                  className="text-[11px] text-kroma-600 hover:text-kroma-800 font-medium"
+                >
+                  Sửa &rarr;
+                </button>
+              </div>
+
+              {/* Layer 3: Main Product Subject */}
+              <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded text-kroma-600 bg-kroma-50">
+                    <Maximize className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-800">
+                      Chủ thể Sản phẩm
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono">
+                      Scale: {Math.round(transform.scale * 100)}% | X:{Math.round(transform.offsetX)} Y:{Math.round(transform.offsetY)}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onTransformChange({ offsetX: 0, offsetY: 0, scale: 1 })}
+                  className="text-[11px] text-slate-500 hover:text-slate-900 font-medium"
+                  title="Căn giữa lại mặc định"
+                >
+                  Căn giữa
+                </button>
+              </div>
+
+              {/* Layer 4: Physical Shadow */}
+              <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => onShadowChange({ ...shadow, enabled: !shadow.enabled })}
+                    className={`p-1.5 rounded transition-colors ${
+                      shadow.enabled ? 'text-kroma-600 bg-kroma-50 hover:bg-kroma-100' : 'text-slate-400 bg-slate-100 hover:text-slate-600'
+                    }`}
+                    title={shadow.enabled ? 'Ẩn bóng' : 'Hiện bóng'}
+                  >
+                    {shadow.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span>Bóng đổ quang học</span>
+                      {shadow.enabled && (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-100 text-slate-700 font-mono font-medium">
+                          {shadow.type.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono">
+                      Opacity: {Math.round(shadow.opacity * 100)}% | Blur: {shadow.blur}px
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('shadow')}
+                  className="text-[11px] text-kroma-600 hover:text-kroma-800 font-medium"
+                >
+                  Sửa &rarr;
+                </button>
+              </div>
+
+              {/* Layer 5: Studio Backdrop */}
+              <div className="p-3 rounded-lg border border-slate-200 bg-white shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded text-slate-500 bg-slate-100">
+                    <Sliders className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-800">
+                      Phông nền Sàn TMĐT
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {selectedPreset.name_vi} ({selectedPreset.width}x{selectedPreset.height})
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('presets')}
+                  className="text-[11px] text-kroma-600 hover:text-kroma-800 font-medium"
+                >
+                  Đổi &rarr;
+                </button>
+              </div>
             </div>
           </div>
         )}
