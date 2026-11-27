@@ -28,6 +28,20 @@ class NotFoundError(AppError):
         )
 
 
+class ForbiddenError(AppError):
+    def __init__(
+        self,
+        message: str = "Operation forbidden",
+        code: ErrorCode = ErrorCode.FORBIDDEN,
+    ) -> None:
+        super().__init__(
+            code=code,
+            message=message,
+            status_code=403,
+            retryable=False,
+        )
+
+
 class ConflictError(AppError):
     def __init__(
         self,

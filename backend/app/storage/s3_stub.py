@@ -29,8 +29,14 @@ class S3Interface:
     def put_immutable(self, key: str, data: bytes) -> StoredBlob:
         raise NotImplementedError(_STUB_MESSAGE)
 
+    def put_derived(self, key: str, data: bytes) -> StoredBlob:
+        raise NotImplementedError(_STUB_MESSAGE)
+
     def get_bytes(self, key: str) -> bytes:
         raise NotImplementedError(_STUB_MESSAGE)
 
     def exists(self, key: str) -> bool:
+        raise NotImplementedError(_STUB_MESSAGE)
+
+    def delete_blob(self, key: str) -> bool:
         raise NotImplementedError(_STUB_MESSAGE)

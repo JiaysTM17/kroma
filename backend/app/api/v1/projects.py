@@ -1,28 +1,39 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
 
 from app.api.deps import get_asset_service, get_project_service
-from app.domain.models import Asset, Project, ProjectState
+from app.api.v1.assets import AssetResponse
+from app.domain.models import Project, ProjectState
 from app.services.asset_service import AssetService
 from app.services.project_service import ProjectService
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
+def _reject_bool(value: Any) -> Any:
+    if isinstance(value, bool):
+        raise ValueError("Boolean value is not allowed for numeric field")
+    return value
+
+
+NoBoolInt = Annotated[int, BeforeValidator(_reject_bool)]
+
+
 class CreateProjectRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     description: str = Field(default="", max_length=1000)
+    active_variant: str = Field(default="default", max_length=64)
 
 
 class UpdateProjectStateRequest(BaseModel):
     state: dict[str, Any]
     active_variant: str | None = Field(default=None, max_length=64)
     expected_revision_id: str | None = Field(default=None, max_length=128)
-    schema_version: int = Field(default=1, ge=1)
+    schema_version: NoBoolInt = Field(default=1, ge=1)
 
 
 class ProjectResponse(BaseModel):
@@ -45,46 +56,6 @@ class ProjectResponse(BaseModel):
         )
 
 
-class AssetSummaryResponse(BaseModel):
-    asset_id: str
-    project_id: str
-    kind: str
-    filename: str
-    mime_type: str
-    sha256: str
-    byte_size: int
-    width: int
-    height: int
-    exif_orientation: int
-    is_readonly: bool
-    created_at: str
-
-    @classmethod
-    def from_domain(cls, asset: Asset) -> AssetSummaryResponse:
-        return cls(
-            asset_id=asset.id,
-            project_id=asset.project_id,
-            kind=asset.kind.value,
-            filename=asset.filename,
-            mime_type=asset.mime_type.value,
-            sha256=asset.sha256,
-            byte_size=asset.byte_size,
-            width=asset.width,
-            height=asset.height,
-            exif_orientation=asset.exif_orientation,
-            is_readonly=asset.is_readonly,
-            created_at=asset.created_at,
-        )
-
-
-class ProjectDetailResponse(ProjectResponse):
-    assets: list[AssetSummaryResponse]
-
-
-class ProjectListResponse(BaseModel):
-    items: list[ProjectResponse]
-
-
 class ProjectStateResponse(BaseModel):
     project_id: str
     schema_version: int
@@ -105,23 +76,54 @@ class ProjectStateResponse(BaseModel):
         )
 
 
+class ProjectDetailResponse(ProjectResponse):
+    state: ProjectStateResponse
+    assets: list[AssetResponse]
+
+
+class ProjectListResponse(BaseModel):
+    projects: list[ProjectResponse]
+    total: int
+
+
+class DeleteProjectResponse(BaseModel):
+    deleted: bool
+    project_id: str
+
+
 @router.get("", response_model=ProjectListResponse)
 def list_projects(
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectListResponse:
     projects = project_service.list_projects()
+    items = [ProjectResponse.from_domain(project) for project in projects]
     return ProjectListResponse(
-        items=[ProjectResponse.from_domain(project) for project in projects]
+        projects=items,
+        total=len(items),
     )
 
 
-@router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ProjectDetailResponse, status_code=status.HTTP_201_CREATED)
 def create_project(
     body: CreateProjectRequest,
     project_service: ProjectService = Depends(get_project_service),
-) -> ProjectResponse:
-    project = project_service.create_project(name=body.name, description=body.description)
-    return ProjectResponse.from_domain(project)
+) -> ProjectDetailResponse:
+    project = project_service.create_project(
+        name=body.name,
+        description=body.description,
+        active_variant=body.active_variant,
+    )
+    state = project_service.get_project_state(project.id)
+    return ProjectDetailResponse(
+        id=project.id,
+        name=project.name,
+        description=project.description,
+        active_variant=project.active_variant,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+        state=ProjectStateResponse.from_domain(state),
+        assets=[],
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectDetailResponse)
@@ -131,6 +133,7 @@ def get_project(
     asset_service: AssetService = Depends(get_asset_service),
 ) -> ProjectDetailResponse:
     project = project_service.get_project(project_id)
+    state = project_service.get_project_state(project_id)
     assets = asset_service.list_project_assets(project_id)
     return ProjectDetailResponse(
         id=project.id,
@@ -139,8 +142,18 @@ def get_project(
         active_variant=project.active_variant,
         created_at=project.created_at,
         updated_at=project.updated_at,
-        assets=[AssetSummaryResponse.from_domain(asset) for asset in assets],
+        state=ProjectStateResponse.from_domain(state),
+        assets=[AssetResponse.from_domain(asset) for asset in assets],
     )
+
+
+@router.delete("/{project_id}", response_model=DeleteProjectResponse)
+def delete_project(
+    project_id: str,
+    project_service: ProjectService = Depends(get_project_service),
+) -> DeleteProjectResponse:
+    project_service.delete_project(project_id)
+    return DeleteProjectResponse(deleted=True, project_id=project_id)
 
 
 @router.get("/{project_id}/state", response_model=ProjectStateResponse)

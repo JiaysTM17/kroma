@@ -21,11 +21,13 @@ class MarketplaceId(str, Enum):
     TIKTOK_SHOP = "tiktok_shop"
     LAZADA = "lazada"
     AMAZON = "amazon"
+    CUSTOM = "custom"
 
 
 class ErrorCode(str, Enum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
     NOT_FOUND = "NOT_FOUND"
+    FORBIDDEN = "FORBIDDEN"
     CONFLICT = "CONFLICT"
     PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
     UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE"

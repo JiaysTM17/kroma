@@ -1,0 +1,18 @@
+{
+  "name": "kroma-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone 4-tier opaque-box Playwright E2E test suite for KROMA Studio",
+  "scripts": {
+    "test": "playwright test",
+    "test:baseline": "playwright test --grep \"@baseline\"",
+    "test:headed": "playwright test --headed",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.10.2",
+    "jszip": "^3.10.1",
+    "typescript": "^5.7.2"
+  }
+}

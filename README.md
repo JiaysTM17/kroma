@@ -162,14 +162,21 @@ kroma/
 │   ├── package.json                                   # Cấu hình phụ thuộc và scripts Next.js
 │   └── tailwind.config.ts                             # Bảng màu sắc & lưới chuẩn craft design
 │
-├── backend/                                           # Máy chủ cục bộ FastAPI & SQLite Clean Architecture
-│   ├── app/main.py                                    # Điểm khởi chạy API và middleware
+├── backend/                                           # Máy chủ cục bộ FastAPI & Hexagonal Architecture
+│   ├── app/main.py                                    # Điểm khởi chạy API và middleware CORS/Security
 │   ├── app/api/v1/                                    # Tuyến API v1: Projects, Assets, Presets, Health
 │   ├── app/routers/                                   # Proofing link và Export ZIP service
-│   ├── app/domain/                                    # Mô hình nghiệp vụ thuần túy (Domain Purity)
-│   ├── app/storage/                                   # Triển khai SQLite WAL và Local FS Blob Store
+│   ├── app/domain/                                    # Mô hình nghiệp vụ thuần túy (Domain Purity & Rules)
+│   ├── app/services/                                  # Tầng dịch vụ: AssetService, PresetService, ProjectService
+│   ├── app/storage/                                   # Triển khai SQLite WAL, Local FS Blob Store, Ports & Stubs
 │   ├── pyproject.toml                                 # Cấu hình gói và pytest runner
-│   └── tests/                                         # 24 bài kiểm thử tự động E2E & Unit (100% Passing)
+│   └── tests/                                         # 34 bài kiểm thử tự động E2E & Unit (100% Passing)
+│
+├── e2e/                                               # Khung kiểm thử hộp đen E2E Đa Tầng (Playwright)
+│   ├── tests/tier1/                                   # F01-F10 Functional Spec tests
+│   ├── tests/tier2/                                   # Boundary Value Analysis (BVA) Backend & Frontend
+│   ├── tests/tier3/                                   # Pairwise Combinations (Sàn & Định dạng ảnh)
+│   └── tests/tier4/                                   # Real-world merchant workflows (Upload -> Edit -> ZIP)
 │
 ├── 01_HO_SO_THIET_KE_HE_THONG/                        # Hồ sơ đặc tả kỹ thuật và nghiệp vụ (.docx)
 │   ├── 00_DANH_MUC_HO_SO_VA_HUONG_DAN_IN.docx         # Danh mục tổng hợp và quy cách xuất bản
@@ -206,7 +213,7 @@ python -m venv .venv
 source .venv/bin/activate  # Trên Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Chạy toàn bộ 21 test tự động
+# Chạy toàn bộ 34 test tự động (100% Pass)
 pytest -v
 
 # Chạy máy chủ phát triển tại cổng 8000

@@ -12,19 +12,32 @@ from app.domain.rules import (
     validate_project_description,
     validate_project_name,
     validate_state_payload,
+    validate_variant_name,
 )
-from app.storage.ports import DatabasePort
+from app.storage.ports import BlobStorePort, DatabasePort
 
 
 class ProjectService:
-    def __init__(self, repo: DatabasePort, max_state_bytes: int = 2 * 1024 * 1024) -> None:
+    def __init__(
+        self,
+        repo: DatabasePort,
+        blob_store: BlobStorePort | None = None,
+        max_state_bytes: int = 2 * 1024 * 1024,
+    ) -> None:
         self._repo = repo
+        self._blob_store = blob_store
         self._max_state_bytes = max_state_bytes
 
-    def create_project(self, name: str, description: str = "") -> Project:
+    def create_project(
+        self,
+        name: str,
+        description: str = "",
+        active_variant: str = "default",
+    ) -> Project:
         try:
             clean_name = validate_project_name(name)
             clean_description = validate_project_description(description)
+            clean_variant = validate_variant_name(active_variant, allow_default=True)
         except ValueError as exc:
             raise ValidationAppError(str(exc)) from exc
 
@@ -34,7 +47,7 @@ class ProjectService:
             id=project_id,
             name=clean_name,
             description=clean_description,
-            active_variant="default",
+            active_variant=clean_variant,
             created_at=now,
             updated_at=now,
         )
@@ -42,11 +55,11 @@ class ProjectService:
             project_id=project_id,
             schema_version=1,
             revision_id=new_id(),
-            active_variant="default",
+            active_variant=clean_variant,
             state={
                 "commands": [],
                 "layers": [],
-                "variants": {"default": {}},
+                "variants": {clean_variant: {}},
                 "shadow": None,
                 "preset_id": None,
             },
@@ -62,6 +75,15 @@ class ProjectService:
         if project is None:
             raise NotFoundError(f"Project '{project_id}' not found")
         return project
+
+    def delete_project(self, project_id: str) -> None:
+        storage_keys = self._repo.delete_project(project_id)
+        if storage_keys is None:
+            raise NotFoundError(f"Project '{project_id}' not found")
+        if self._blob_store is not None:
+            for key in storage_keys:
+                if self._repo.count_storage_key_refs(key) == 0:
+                    self._blob_store.delete_blob(key)
 
     def get_project_state(self, project_id: str) -> ProjectState:
         self.get_project(project_id)
@@ -86,6 +108,10 @@ class ProjectService:
 
         try:
             validate_state_payload(state_payload, schema_version=schema_version)
+            variant = validate_variant_name(
+                active_variant if active_variant is not None else current.active_variant,
+                allow_default=True,
+            )
         except ValueError as exc:
             raise ValidationAppError(str(exc)) from exc
 
@@ -97,10 +123,6 @@ class ProjectService:
                 f"Project state exceeds maximum size of {self._max_state_bytes} bytes",
                 code=ErrorCode.PAYLOAD_TOO_LARGE,
             )
-
-        variant = (active_variant or current.active_variant).strip() or "default"
-        if len(variant) > 64:
-            raise ValidationAppError("active_variant cannot exceed 64 characters")
 
         next_state = ProjectState(
             project_id=project_id,

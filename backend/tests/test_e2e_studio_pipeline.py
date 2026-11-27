@@ -1,49 +1,38 @@
 from __future__ import annotations
 
 import io
-import json
 import zipfile
+
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from app.main import app
-from app.domain.rules import (
-    validate_project_name,
-    validate_project_description,
-    validate_state_payload,
-    check_revision_conflict,
-)
-
 
 def _create_synthetic_product_image(width: int = 400, height: int = 500) -> bytes:
-    """Create a synthetic e-commerce product image (e.g. shoe on plain background)"""
+    """Create a synthetic e-commerce product image (e.g. shoe on plain background)."""
     img = Image.new("RGBA", (width, height), (255, 255, 255, 255))
-    # Draw a synthetic colored product box in center
     for y in range(100, 400):
         for x in range(100, 300):
-            img.putpixel((x, y), (79, 70, 229, 255))  # Indigo product
+            img.putpixel((x, y), (79, 70, 229, 255))
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
 
 
-def test_e2e_marketplace_presets_specs():
-    """Verify all marketplace presets adhere to official platform specifications"""
-    client = TestClient(app)
+def test_e2e_marketplace_presets_specs(client: TestClient) -> None:
+    """Verify all marketplace presets adhere to official platform specifications."""
     res = client.get("/v1/presets")
     assert res.status_code == 200
     data = res.json()
-    items = data["items"]
-    presets_by_id = {p["id"]: p for p in items}
+    assert data["total"] >= 5
+    presets = data["presets"]
+    presets_by_id = {p["id"]: p for p in presets}
 
-    # 1. Shopee
     shopee = presets_by_id["shopee_1_1"]
     assert shopee["width"] == 1024
     assert shopee["height"] == 1024
     assert shopee["aspect_ratio"] == "1:1"
     assert "webp" in shopee["formats"]
 
-    # 2. TikTok Shop 3:4 Vertical
     tiktok = presets_by_id["tiktok_3_4"]
     assert tiktok["width"] == 1200
     assert tiktok["height"] == 1600
@@ -51,23 +40,18 @@ def test_e2e_marketplace_presets_specs():
     assert tiktok["safe_zone"]["top"] > 0
     assert tiktok["safe_zone"]["bottom"] > 0
 
-    # 3. Amazon White Hero 85% Rule
     amazon = presets_by_id["amazon_white_85"]
     assert amazon["background_rgb"] == [255, 255, 255]
     assert amazon["subject_area_ratio"] == 0.85
     assert amazon["width"] >= 1000
 
 
-def test_e2e_full_project_asset_and_proofing_workflow():
-    """Full end-to-end studio workflow: project -> asset upload -> state mutation -> proofing session -> feedback"""
-    client = TestClient(app)
-
-    # 1. Create new project
+def test_e2e_full_project_asset_and_proofing_workflow(client: TestClient) -> None:
+    """Full end-to-end studio workflow: project -> asset upload -> state mutation -> proofing session -> feedback."""
     proj_res = client.post("/v1/projects", json={"name": "E2E Nike Sneaker Campaign"})
     assert proj_res.status_code == 201
     proj_id = proj_res.json()["id"]
 
-    # 2. Upload synthetic product photo
     raw_img = _create_synthetic_product_image()
     upload_res = client.post(
         f"/v1/projects/{proj_id}/assets",
@@ -79,12 +63,10 @@ def test_e2e_full_project_asset_and_proofing_workflow():
     assert asset_data["width"] == 400
     assert asset_data["height"] == 500
 
-    # 3. Download asset file byte-for-byte
     file_res = client.get(f"/v1/assets/{asset_id}/file")
     assert file_res.status_code == 200
     assert file_res.content == raw_img
 
-    # 4. Update non-destructive editing state (Marketplace preset, physical shadow, Float32 adjustments)
     state_res = client.get(f"/v1/projects/{proj_id}/state")
     assert state_res.status_code == 200
     rev_id = state_res.json()["revision_id"]
@@ -108,7 +90,6 @@ def test_e2e_full_project_asset_and_proofing_workflow():
     assert updated_state["active_variant"] == "amazon_white_85"
     assert updated_state["state"]["preset"] == "amazon_white_85"
 
-    # 5. Create client proofing session
     proof_res = client.post(
         "/v1/proofing",
         json={
@@ -123,7 +104,6 @@ def test_e2e_full_project_asset_and_proofing_workflow():
     session_id = session_data["id"]
     assert session_data["status"] == "pending"
 
-    # 6. Client submits approval and comments
     comment_res = client.post(
         f"/v1/proofing/{session_id}/feedback",
         json={
@@ -139,10 +119,8 @@ def test_e2e_full_project_asset_and_proofing_workflow():
     assert "Đã duyệt" in updated_session["feedback"][0]["comment"]
 
 
-def test_e2e_batch_export_packaging():
-    """Verify batch export endpoint generates a valid ZIP archive containing transformed images"""
-    client = TestClient(app)
-
+def test_e2e_batch_export_packaging(client: TestClient) -> None:
+    """Verify batch export endpoint generates a valid ZIP archive containing transformed images."""
     export_req = {
         "project_id": "test_proj_export",
         "recipes": [
@@ -167,17 +145,15 @@ def test_e2e_batch_export_packaging():
     assert export_resp["status"] == "completed"
     assert export_resp["total_images"] == 2
 
-    # Download ZIP
     download_url = export_resp["download_url"]
     dl_res = client.get(download_url)
     assert dl_res.status_code == 200
     assert dl_res.headers["content-type"] == "application/zip"
 
-    # Verify binary ZIP structure
     zip_bytes = io.BytesIO(dl_res.content)
     with zipfile.ZipFile(zip_bytes, "r") as zf:
         file_list = zf.namelist()
-        assert len(file_list) >= 3  # manifest.txt + 2 images
+        assert len(file_list) >= 3
         assert "manifest.txt" in file_list
         assert any("shopee_square" in name for name in file_list)
         assert any("amazon_hero" in name for name in file_list)

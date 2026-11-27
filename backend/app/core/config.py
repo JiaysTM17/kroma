@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     storage_backend: Literal["local", "s3"] = "local"
     local_storage_dir: Path = BACKEND_DIR / "data" / "blobs"
+    exports_dir: Path = BACKEND_DIR / "data" / "exports"
     s3_bucket: str | None = None
     s3_endpoint_url: str | None = None
     s3_region: str | None = None

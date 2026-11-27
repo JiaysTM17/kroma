@@ -13,7 +13,8 @@ def health_check(container: AppContainer = Depends(get_container)) -> dict[str, 
     if not container.repo.ping():
         raise InternalStorageError("Database health check failed")
     return {
-        "status": "ok",
+        "status": "healthy",
+        "db": "ok",
         "database": container.settings.database_backend,
         "storage": container.settings.storage_backend,
         "version": container.settings.app_version,
