@@ -151,11 +151,23 @@ export const EmptyCanvasState: React.FC<EmptyCanvasStateProps> = ({
               e.stopPropagation();
               fileInputRef.current?.click();
             }}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-kroma-600 hover:bg-kroma-700 active:scale-[0.98] text-white text-xs font-medium transition-[background-color,transform] focus:outline-none focus:ring-2 focus:ring-kroma-600/30"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-kroma-600 hover:bg-kroma-700 active:scale-[0.98] text-white text-xs font-medium transition-[background-color,transform] focus:outline-none focus:ring-2 focus:ring-kroma-600/30 shadow-sm"
           >
             <ImagePlus className="w-4 h-4" strokeWidth={1.5} />
             <span>{t.empty_cta}</span>
           </button>
+
+          {/* Quick Paste Hint */}
+          <div className="mt-3 flex items-center gap-1.5 text-[11px] text-zinc-400">
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-600 font-mono text-[10px]">
+              Ctrl
+            </kbd>
+            <span>+</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-zinc-600 font-mono text-[10px]">
+              V
+            </kbd>
+            <span>{lang === 'vi' ? 'để dán nhanh ảnh chụp màn hình' : 'to paste screenshot directly'}</span>
+          </div>
         </div>
 
         {/* 3-Step Usage Guide */}

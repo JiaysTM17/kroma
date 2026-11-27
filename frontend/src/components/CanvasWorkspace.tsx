@@ -28,6 +28,7 @@ import {
   applyFloat32Adjustments,
   drawSafeZone,
   renderBoundingBox,
+  renderCenterSnapGuides,
   renderPromoBadge,
   renderShadow,
   renderSplitDivider,
@@ -273,6 +274,13 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     if (showHandles && !splitSliderEnabled) {
       renderBoundingBox(ctx, drawX, drawY, drawW, drawH);
     }
+
+    // Magnetic Snapping Guidelines when subject aligns with center
+    const isSnapX = Math.abs(safeTransform.offsetX) < 4;
+    const isSnapY = Math.abs(safeTransform.offsetY) < 4;
+    if (isDraggingProduct && (isSnapX || isSnapY)) {
+      renderCenterSnapGuides(ctx, canvas.width, canvas.height, isSnapX, isSnapY);
+    }
   }, [
     asset,
     loadedImg,
@@ -326,9 +334,16 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     if (isDraggingProduct) {
       const dx = (e.clientX - dragStart.x) / zoom;
       const dy = (e.clientY - dragStart.y) / zoom;
+      let nextX = safeTransform.offsetX + dx;
+      let nextY = safeTransform.offsetY + dy;
+
+      // Magnetic snap to center within 4px
+      if (Math.abs(nextX) < 4) nextX = 0;
+      if (Math.abs(nextY) < 4) nextY = 0;
+
       onTransformChange({
-        offsetX: safeTransform.offsetX + dx,
-        offsetY: safeTransform.offsetY + dy,
+        offsetX: nextX,
+        offsetY: nextY,
         scale: safeTransform.scale,
       });
       setDragStart({ x: e.clientX, y: e.clientY });

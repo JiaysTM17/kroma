@@ -63,6 +63,15 @@ Hệ thống giải quyết bốn điểm nghẽn kỹ thuật điển hình tro
 - Đồ thị xử lý nội bộ dùng không gian màu tuyến tính (Linear sRGB) với độ chính xác số thực dấu phẩy động 32-bit (RGBA Float32) và quy ước alpha nhân trước (Premultiplied alpha).
 - Lịch sử thao tác theo mô hình lệnh (Command pattern), cho phép hoàn tác vô hạn và phục hồi trạng thái làm việc sau sự cố (Crash recovery journal).
 
+#### 2.5 Công thái học Studio & Điều hướng thông minh (Studio Ergonomics)
+- **Cơ chế Dán ảnh Toàn cục (Global Clipboard Paste `Ctrl+V`):** Hỗ trợ dán trực tiếp ảnh chụp màn hình (Snipping Tool) hoặc copy từ trình duyệt vào KROMA ngay lập tức, tự động kiểm tra MIME và tạo tài sản trong hàng chờ mà không cần lưu ra ổ cứng.
+- **Căn chỉnh Từ tính & Thước gióng Tâm (Magnetic Snapping & Center Guides):** Tự động bắt dính vào tâm X=0 / Y=0 khi kéo thả trong phạm vi 4px, hiển thị đường gióng tọa độ màu chàm (Magnetic Indigo `#6366F1`).
+- **Điều hướng Vi mô bằng Bàn phím (Keyboard Nudge):** Di chuyển đối tượng chính xác từng pixel bằng 4 phím mũi tên (bước 1px, giữ `Shift` bước 10px), phím `Delete`/`Backspace` để xóa ảnh, phím `0` để đặt lại zoom 100%.
+- **Khung Bao Biến đổi Kèm Nhãn Kích thước (Bounding Box with Dimension Badge):** 8 điểm neo điều khiển quanh sản phẩm kèm nhãn hiển thị chính xác chiều rộng và chiều cao (`W × H px`) thời gian thực.
+- **Trình Quản lý Lớp vẽ Trực quan (Canvas Layer Stack):** Kiểm soát độc lập Watermark, Khung tem, Chủ thể sản phẩm, Bóng đổ quang học và Phông nền sàn với nút con mắt ẩn/hiện tức thì.
+- **Bộ Lọc Cân Bằng Nhanh 1-Chạm:** Tích hợp các bộ lọc màu chuẩn TMĐT: *Auto-Enhance*, *Tươi tắn TMĐT*, *Trong trẻo Studio*.
+- **Kiến trúc Zero-State Tối giản:** Khởi động ứng dụng sạch sẽ với 0 ảnh mẫu, trung tâm là khung tải ảnh sang trọng hỗ trợ kéo thả và hướng dẫn 3 bước.
+
 ---
 
 ### 3. Kiến trúc kỹ thuật
@@ -160,7 +169,7 @@ kroma/
 │   ├── app/domain/                                    # Mô hình nghiệp vụ thuần túy (Domain Purity)
 │   ├── app/storage/                                   # Triển khai SQLite WAL và Local FS Blob Store
 │   ├── pyproject.toml                                 # Cấu hình gói và pytest runner
-│   └── tests/                                         # 21 bài kiểm thử tự động (100% Passing)
+│   └── tests/                                         # 24 bài kiểm thử tự động E2E & Unit (100% Passing)
 │
 ├── 01_HO_SO_THIET_KE_HE_THONG/                        # Hồ sơ đặc tả kỹ thuật và nghiệp vụ (.docx)
 │   ├── 00_DANH_MUC_HO_SO_VA_HUONG_DAN_IN.docx         # Danh mục tổng hợp và quy cách xuất bản

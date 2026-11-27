@@ -337,7 +337,7 @@ export function renderWatermark(
 }
 
 /**
- * Render Interactive Canva/Figma-style Transform Bounding Box with 8 handles
+ * Render Interactive Canva/Figma-style Transform Bounding Box with 8 handles and dimension badge
  */
 export function renderBoundingBox(
   ctx: CanvasRenderingContext2D,
@@ -352,6 +352,25 @@ export function renderBoundingBox(
   ctx.strokeStyle = '#4F46E5'; // KROMA Indigo
   ctx.lineWidth = 1.5;
   ctx.strokeRect(x, y, width, height);
+
+  // Dimension badge on top-center
+  const dimText = `${Math.round(width)} × ${Math.round(height)} px`;
+  ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+  const textWidth = ctx.measureText(dimText).width;
+  const badgeX = x + width / 2 - textWidth / 2 - 6;
+  const badgeY = y - 22;
+
+  if (badgeY > 0) {
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, textWidth + 12, 16, 4);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.fillText(dimText, x + width / 2, badgeY + 8);
+  }
 
   // 8 Resize Handles
   const handleSize = 8;
@@ -375,6 +394,40 @@ export function renderBoundingBox(
     ctx.fillRect(pt.x - half, pt.y - half, handleSize, handleSize);
     ctx.strokeRect(pt.x - half, pt.y - half, handleSize, handleSize);
   });
+
+  ctx.restore();
+}
+
+/**
+ * Render Figma-style magnetic center guidelines when subject is centered
+ */
+export function renderCenterSnapGuides(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  isSnapX: boolean,
+  isSnapY: boolean
+) {
+  if (!isSnapX && !isSnapY) return;
+
+  ctx.save();
+  ctx.strokeStyle = '#6366F1'; // Magnetic Indigo
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 6]);
+
+  if (isSnapX) {
+    ctx.beginPath();
+    ctx.moveTo(canvasWidth / 2, 0);
+    ctx.lineTo(canvasWidth / 2, canvasHeight);
+    ctx.stroke();
+  }
+
+  if (isSnapY) {
+    ctx.beginPath();
+    ctx.moveTo(0, canvasHeight / 2);
+    ctx.lineTo(canvasWidth, canvasHeight / 2);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }

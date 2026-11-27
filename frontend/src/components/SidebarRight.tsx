@@ -571,6 +571,64 @@ export const SidebarRight: React.FC<SidebarRightProps> = ({
               </button>
             </div>
 
+            {/* Quick 1-Click Tuning Presets */}
+            <div className="grid grid-cols-3 gap-1.5 pb-2 border-b border-zinc-200">
+              <button
+                type="button"
+                onClick={() =>
+                  onAdjustmentsChange({
+                    exposure: 8,
+                    contrast: 12,
+                    highlights: 0,
+                    shadows: 0,
+                    temperature: 0,
+                    tint: 0,
+                    sharpness: 10,
+                  })
+                }
+                className="py-1.5 px-2 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-[11px] font-medium text-zinc-700 transition-colors text-center"
+                title="Tự động cân bằng sáng chuẩn"
+              >
+                Auto-Enhance
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onAdjustmentsChange({
+                    exposure: 12,
+                    contrast: 16,
+                    highlights: 5,
+                    shadows: 0,
+                    temperature: 4,
+                    tint: 2,
+                    sharpness: 12,
+                  })
+                }
+                className="py-1.5 px-2 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-[11px] font-medium text-zinc-700 transition-colors text-center"
+                title="Màu tươi sáng nổi bật Shopee/TikTok"
+              >
+                Tươi tắn TMĐT
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onAdjustmentsChange({
+                    exposure: 6,
+                    contrast: 10,
+                    highlights: 0,
+                    shadows: 0,
+                    temperature: -8,
+                    tint: -2,
+                    sharpness: 8,
+                  })
+                }
+                className="py-1.5 px-2 rounded-md border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-[11px] font-medium text-zinc-700 transition-colors text-center"
+                title="Trong sáng sạch sẽ phong cách tối giản"
+              >
+                Trong trẻo Studio
+              </button>
+            </div>
+
             <div className="space-y-1">
               <div className="flex justify-between text-xs text-zinc-600">
                 <span>Exposure</span>

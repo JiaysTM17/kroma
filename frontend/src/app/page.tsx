@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { SidebarLeft } from '@/components/SidebarLeft';
 import { CanvasWorkspace } from '@/components/CanvasWorkspace';
@@ -87,9 +87,94 @@ export default function StudioPage() {
   const [isBrushActive, setIsBrushActive] = useState<boolean>(false);
   const [brushSize, setBrushSize] = useState<number>(24);
 
-  // Modals
+  // Modals & Notifications
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isProofingModalOpen, setIsProofingModalOpen] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Global Clipboard Paste Engine (Ctrl+V / Cmd+V)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+              const now = new Date();
+              const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+              const newAsset: ImageAsset = {
+                id: `asset_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                name: `Ảnh Clipboard (${timeStr})`,
+                category: lang === 'vi' ? 'Dán từ clipboard' : 'Clipboard paste',
+                originalUrl: url,
+                width: img.naturalWidth || 1024,
+                height: img.naturalHeight || 1024,
+                sizeBytes: file.size,
+                hasBackgroundRemoved: false,
+              };
+              setAssets((prev) => [newAsset, ...prev]);
+              setSelectedAssetId(newAsset.id);
+              showToast(lang === 'vi' ? '📋 Đã dán ảnh từ clipboard' : '📋 Image pasted from clipboard');
+            };
+            img.onerror = () => URL.revokeObjectURL(url);
+            img.src = url;
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [lang]);
+
+  // Keyboard Nudge & Quick Delete Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') return;
+
+      const step = e.shiftKey ? 10 : 1;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setTransform((prev) => ({ ...prev, offsetX: prev.offsetX - step }));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setTransform((prev) => ({ ...prev, offsetX: prev.offsetX + step }));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setTransform((prev) => ({ ...prev, offsetY: prev.offsetY - step }));
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setTransform((prev) => ({ ...prev, offsetY: prev.offsetY + step }));
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedAssetId) {
+          e.preventDefault();
+          handleRemoveAsset(selectedAssetId);
+          showToast(lang === 'vi' ? 'Đã xóa ảnh được chọn' : 'Asset removed');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedAssetId, lang]);
 
   const currentAsset: ImageAsset | null =
     assets.find((a) => a.id === selectedAssetId) ?? assets[0] ?? null;
@@ -328,6 +413,12 @@ export default function StudioPage() {
         onClose={() => setIsProofingModalOpen(false)}
         projectId="kroma_proj_ecommerce"
       />
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-3.5 py-2 rounded-lg bg-zinc-900/90 text-white text-xs font-medium shadow-xl backdrop-blur-sm border border-zinc-700 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }
