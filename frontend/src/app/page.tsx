@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
-import { SidebarLeft, SAMPLE_PRODUCTS } from '@/components/SidebarLeft';
+import { SidebarLeft } from '@/components/SidebarLeft';
 import { CanvasWorkspace } from '@/components/CanvasWorkspace';
 import { SidebarRight } from '@/components/SidebarRight';
 import { BatchExportModal } from '@/components/BatchExportModal';
@@ -19,12 +19,16 @@ import {
 import { MARKETPLACE_PRESETS } from '@/lib/presets';
 import { Language } from '@/lib/i18n';
 
+const ACCEPTED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const ACCEPTED_EXT_REGEX = /\.(png|jpe?g|webp)$/i;
+
 export default function StudioPage() {
   const [lang, setLang] = useState<Language>('vi');
+  const [mobilePanel, setMobilePanel] = useState<'none' | 'left' | 'right'>('none');
 
-  // Pre-load rich commercial e-commerce sample products
-  const [assets, setAssets] = useState<ImageAsset[]>(SAMPLE_PRODUCTS);
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>('sample_sneaker');
+  // Empty initial state (zero preloaded sample products)
+  const [assets, setAssets] = useState<ImageAsset[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   // Active marketplace preset (default: Shopee 1024x1024)
   const [selectedPreset, setSelectedPreset] = useState<MarketplacePreset>(
@@ -87,18 +91,23 @@ export default function StudioPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isProofingModalOpen, setIsProofingModalOpen] = useState<boolean>(false);
 
-  const currentAsset = assets.find((a) => a.id === selectedAssetId) || assets[0];
+  const currentAsset: ImageAsset | null =
+    assets.find((a) => a.id === selectedAssetId) ?? assets[0] ?? null;
 
-  // Upload user photos
+  // Upload user photos with MIME/extension guard and error cleanup
   const handleUploadAssets = (files: FileList) => {
     Array.from(files).forEach((file) => {
+      const isValidMime = ACCEPTED_MIME_TYPES.has(file.type.toLowerCase());
+      const isValidExt = ACCEPTED_EXT_REGEX.test(file.name);
+      if (!isValidMime && !isValidExt) return;
+
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
         const newAsset: ImageAsset = {
           id: `asset_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           name: file.name,
-          category: 'Ảnh tải lên',
+          category: lang === 'vi' ? 'Ảnh tải lên' : 'Uploaded image',
           originalUrl: url,
           width: img.naturalWidth || 1024,
           height: img.naturalHeight || 1024,
@@ -108,29 +117,35 @@ export default function StudioPage() {
         setAssets((prev) => [newAsset, ...prev]);
         setSelectedAssetId(newAsset.id);
       };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+      };
       img.src = url;
     });
   };
 
   const handleRemoveAsset = (id: string) => {
-    if (assets.length <= 1) return;
-    setAssets((prev) => prev.filter((a) => a.id !== id));
-    if (selectedAssetId === id) {
-      setSelectedAssetId(assets.find((a) => a.id !== id)?.id || null);
-    }
-  };
-
-  const handleSelectSample = (sample: ImageAsset) => {
-    const existing = assets.find((a) => a.id === sample.id);
-    if (!existing) {
-      setAssets((prev) => [sample, ...prev]);
-    }
-    setSelectedAssetId(sample.id);
+    setAssets((prev) => {
+      const target = prev.find((a) => a.id === id);
+      if (target) {
+        if (target.originalUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(target.originalUrl);
+        }
+        if (target.processedUrl && target.processedUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(target.processedUrl);
+        }
+      }
+      const remaining = prev.filter((a) => a.id !== id);
+      if (selectedAssetId === id) {
+        setSelectedAssetId(remaining[0]?.id ?? null);
+      }
+      return remaining;
+    });
   };
 
   // Amazon 1-Click 85% Auto Framing
   const handleAutoFrameAmazon = () => {
-    setSelectedPreset(MARKETPLACE_PRESETS[4]); // amazon_white_85
+    setSelectedPreset(MARKETPLACE_PRESETS[4]);
     setTransform({ offsetX: 0, offsetY: 0, scale: 1.0 });
     setShadow({
       enabled: true,
@@ -168,7 +183,6 @@ export default function StudioPage() {
           const cornerG = d[1];
           const cornerB = d[2];
 
-          // Alpha isolation with soft feather threshold
           for (let i = 0; i < d.length; i += 4) {
             const diff =
               Math.abs(d[i] - cornerR) +
@@ -190,6 +204,9 @@ export default function StudioPage() {
                 : a
             )
           );
+          setIsRemovingBg(false);
+        };
+        img.onerror = () => {
           setIsRemovingBg(false);
         };
         img.src = currentAsset.originalUrl;
@@ -218,11 +235,24 @@ export default function StudioPage() {
         onLanguageChange={setLang}
         onOpenExport={() => setIsExportModalOpen(true)}
         onOpenProofing={() => setIsProofingModalOpen(true)}
+        activeMobilePanel={mobilePanel}
+        onToggleLeftPanel={() => setMobilePanel((p) => (p === 'left' ? 'none' : 'left'))}
+        onToggleRightPanel={() => setMobilePanel((p) => (p === 'right' ? 'none' : 'right'))}
+        assetCount={assets.length}
       />
 
-      {/* Main Studio Triple-Column Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left: Assets Queue & Samples Gallery */}
+      {/* Main Studio Responsive Workspace Shell */}
+      <div className="flex-1 flex min-h-0 min-w-0 relative overflow-hidden">
+        {/* Mobile/Tablet Drawer Backdrop */}
+        {mobilePanel !== 'none' && (
+          <div
+            aria-hidden="true"
+            onClick={() => setMobilePanel('none')}
+            className="fixed inset-0 top-14 bg-zinc-900/30 z-20 lg:hidden"
+          />
+        )}
+
+        {/* Left: Product Queue & Upload */}
         <SidebarLeft
           lang={lang}
           assets={assets}
@@ -230,15 +260,17 @@ export default function StudioPage() {
           onSelectAsset={setSelectedAssetId}
           onUploadAssets={handleUploadAssets}
           onRemoveAsset={handleRemoveAsset}
-          onSelectSampleProduct={handleSelectSample}
+          isOpenMobile={mobilePanel === 'left'}
+          onCloseMobile={() => setMobilePanel('none')}
         />
 
-        {/* Center: Canvas Workspace with Bounding Box & Before/After Split */}
+        {/* Center: Canvas Workspace */}
         <CanvasWorkspace
           lang={lang}
           asset={currentAsset}
           assets={assets}
           onSelectAsset={setSelectedAssetId}
+          onUploadAssets={handleUploadAssets}
           preset={selectedPreset}
           shadow={shadow}
           adjustments={adjustments}
@@ -251,7 +283,7 @@ export default function StudioPage() {
           brushSize={brushSize}
         />
 
-        {/* Right: Presets, AI Cutout, Shadows, Frames & Float32 Adjustments */}
+        {/* Right: Inspector & Tools */}
         <SidebarRight
           lang={lang}
           asset={currentAsset}
@@ -275,6 +307,8 @@ export default function StudioPage() {
           onPromoBadgeChange={setPromoBadge}
           onWatermarkChange={setWatermark}
           onTransformChange={setTransform}
+          isOpenMobile={mobilePanel === 'right'}
+          onCloseMobile={() => setMobilePanel('none')}
         />
       </div>
 

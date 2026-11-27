@@ -24,9 +24,9 @@ const config: Config = {
         },
         surface: {
           light: "#FFFFFF",
-          subtle: "#F8FAFC",
-          muted: "#F1F5F9",
-          border: "#E2E8F0",
+          subtle: "#FAFAFA",
+          muted: "#F4F4F5",
+          border: "#E4E4E7",
           dark: "#0F172A",
           darker: "#020617",
           darkBorder: "#1E293B",

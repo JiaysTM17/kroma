@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import JSZip from 'jszip';
-import { X, Download, Check, FileArchive } from 'lucide-react';
+import { X, Download, FileArchive } from 'lucide-react';
 import { ImageAsset, MarketplacePreset, ShadowConfig, AdjustmentValues } from '@/lib/types';
 import { applyFloat32Adjustments, renderShadow } from '@/lib/canvasPipeline';
 
@@ -132,45 +132,46 @@ export const BatchExportModal: React.FC<BatchExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-md rounded-lg bg-surface-light border border-surface-border shadow-2xl overflow-hidden select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-xl bg-surface-light border border-surface-border shadow-lg overflow-hidden select-none">
         {/* Header */}
         <div className="p-4 border-b border-surface-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileArchive className="w-5 h-5 text-kroma-600" />
-            <h3 className="text-sm font-bold text-slate-900">Xuất ảnh hàng loạt (Batch Export)</h3>
+            <FileArchive className="w-5 h-5 text-kroma-600" strokeWidth={1.5} />
+            <h3 className="text-sm font-semibold text-zinc-900">Xuất ảnh hàng loạt (Batch Export)</h3>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded">
-            <X className="w-4 h-4" />
+          <button type="button" onClick={onClose} className="p-1 text-zinc-400 hover:text-zinc-600 rounded transition-colors">
+            <X className="w-4 h-4" strokeWidth={1.5} />
           </button>
         </div>
 
         {/* Body */}
         <div className="p-4 space-y-4 text-xs">
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">Quy chuẩn xuất theo sàn:</label>
-            <div className="p-2.5 rounded bg-slate-50 border border-slate-200">
-              <p className="font-bold text-slate-800">{preset.name_vi}</p>
-              <p className="text-slate-500 font-mono text-[11px] mt-0.5">
+            <label className="font-medium text-zinc-700 block mb-1">Quy chuẩn xuất theo sàn</label>
+            <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-200">
+              <p className="font-semibold text-zinc-800">{preset.name_vi}</p>
+              <p className="text-zinc-500 font-mono tabular-nums text-xs mt-1">
                 {preset.width} × {preset.height} px ({preset.aspect_ratio})
               </p>
             </div>
           </div>
 
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">Định dạng file xuất:</label>
+            <label className="font-medium text-zinc-700 block mb-1">Định dạng file xuất</label>
             <div className="grid grid-cols-3 gap-2">
               {(['webp', 'png', 'jpeg'] as const).map((fmt) => (
                 <button
                   key={fmt}
+                  type="button"
                   onClick={() => setFormat(fmt)}
-                  className={`p-2 rounded border font-medium uppercase text-center transition-all ${
+                  className={`p-2 rounded-lg border font-mono text-center transition-colors ${
                     format === fmt
-                      ? 'border-kroma-600 bg-kroma-50 text-kroma-900 font-bold'
-                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                      ? 'border-kroma-600 bg-kroma-50 text-kroma-900 font-semibold'
+                      : 'border-zinc-200 hover:border-zinc-300 text-zinc-600'
                   }`}
                 >
-                  {fmt}
+                  {fmt.toUpperCase()}
                 </button>
               ))}
             </div>
@@ -178,9 +179,9 @@ export const BatchExportModal: React.FC<BatchExportModalProps> = ({
 
           {format !== 'png' && (
             <div>
-              <div className="flex justify-between font-semibold text-slate-700 mb-1">
-                <span>Chất lượng nén:</span>
-                <span className="font-mono">{Math.round(quality * 100)}%</span>
+              <div className="flex justify-between font-medium text-zinc-700 mb-1">
+                <span>Chất lượng nén</span>
+                <span className="font-mono tabular-nums">{Math.round(quality * 100)}%</span>
               </div>
               <input
                 type="range"
@@ -196,13 +197,13 @@ export const BatchExportModal: React.FC<BatchExportModalProps> = ({
 
           {isExporting && (
             <div className="space-y-1 pt-2">
-              <div className="flex justify-between text-slate-600">
-                <span>Đang render nén ảnh...</span>
-                <span className="font-mono">{progress}%</span>
+              <div className="flex justify-between text-zinc-600">
+                <span>Đang render nén ảnh</span>
+                <span className="font-mono tabular-nums">{progress}%</span>
               </div>
-              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-zinc-200 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-kroma-600 transition-all duration-150"
+                  className="h-full bg-kroma-600 transition-[width] duration-150"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -213,19 +214,21 @@ export const BatchExportModal: React.FC<BatchExportModalProps> = ({
         {/* Footer */}
         <div className="p-4 border-t border-surface-border bg-surface-subtle flex justify-end gap-2">
           <button
+            type="button"
             onClick={onClose}
             disabled={isExporting}
-            className="px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200 rounded border border-slate-300 transition-colors"
+            className="px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-200 rounded-lg border border-zinc-300 transition-colors"
           >
             Hủy
           </button>
           <button
+            type="button"
             onClick={handleExportZip}
             disabled={isExporting || assets.length === 0}
-            className="px-4 py-1.5 text-xs font-semibold text-white bg-kroma-600 hover:bg-kroma-700 rounded shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            className="px-4 py-2 text-xs font-medium text-white bg-kroma-600 hover:bg-kroma-700 rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-40"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Tải file ZIP ({assets.length} ảnh)</span>
+            <Download className="w-4 h-4" strokeWidth={1.5} />
+            <span className="tabular-nums">Tải file ZIP ({assets.length} ảnh)</span>
           </button>
         </div>
       </div>

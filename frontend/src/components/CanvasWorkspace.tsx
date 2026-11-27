@@ -13,7 +13,6 @@ import {
   RotateCcw,
   LayoutGrid,
   Image as ImageIcon,
-  Sparkles,
   Check,
 } from 'lucide-react';
 import {
@@ -35,12 +34,14 @@ import {
   renderWatermark,
 } from '@/lib/canvasPipeline';
 import { Language, translations } from '@/lib/i18n';
+import { EmptyCanvasState } from '@/components/EmptyCanvasState';
 
 interface CanvasWorkspaceProps {
   lang: Language;
   asset: ImageAsset | null;
   assets?: ImageAsset[];
   onSelectAsset?: (id: string) => void;
+  onUploadAssets: (files: FileList) => void;
   preset: MarketplacePreset;
   shadow: ShadowConfig;
   adjustments: AdjustmentValues;
@@ -58,6 +59,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   asset,
   assets = [],
   onSelectAsset,
+  onUploadAssets,
   preset,
   shadow,
   adjustments,
@@ -66,8 +68,6 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   transform,
   onTransformChange,
   isRemovingBg,
-  isBrushActive,
-  brushSize,
 }) => {
   const t = translations[lang];
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,14 +85,12 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   const [showGrid, setShowGrid] = useState(false);
   const [showHandles, setShowHandles] = useState(true);
   const [splitSliderEnabled, setSplitSliderEnabled] = useState(false);
-  const [splitPos, setSplitPos] = useState(0.5); // 0.0 to 1.0
+  const [splitPos, setSplitPos] = useState(0.5);
 
-  // Dragging states
   const [isDraggingProduct, setIsDraggingProduct] = useState(false);
   const [isDraggingSlider, setIsDraggingSlider] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Loaded image cache
   const [loadedImg, setLoadedImg] = useState<HTMLImageElement | null>(null);
   const [origImg, setOrigImg] = useState<HTMLImageElement | null>(null);
 
@@ -116,15 +114,13 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
   // Main Render Cycle
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !asset) return;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
-    // Canvas resolution matches the active Marketplace Preset
     canvas.width = preset.width;
     canvas.height = preset.height;
 
-    // 1. Clear & Render Background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (bgMode === 'white') {
@@ -134,27 +130,32 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       ctx.fillStyle = '#0F172A';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else if (bgMode === 'warm') {
-      // Warm studio pedestal gradient
       const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      grad.addColorStop(0, '#F8FAFC');
-      grad.addColorStop(0.7, '#F1F5F9');
-      grad.addColorStop(1, '#E2E8F0');
+      grad.addColorStop(0, '#FAFAFA');
+      grad.addColorStop(0.7, '#F4F4F5');
+      grad.addColorStop(1, '#E4E4E7');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Studio pedestal circle
       ctx.save();
-      ctx.fillStyle = '#E2E8F0';
+      ctx.fillStyle = '#E4E4E7';
       ctx.beginPath();
-      ctx.ellipse(canvas.width / 2, canvas.height * 0.88, canvas.width * 0.38, canvas.height * 0.08, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        canvas.width / 2,
+        canvas.height * 0.88,
+        canvas.width * 0.38,
+        canvas.height * 0.08,
+        0,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
       ctx.restore();
     } else {
-      // Checkerboard transparency pattern
       const size = 20;
       for (let y = 0; y < canvas.height; y += size) {
         for (let x = 0; x < canvas.width; x += size) {
-          ctx.fillStyle = (x / size + y / size) % 2 === 0 ? '#FFFFFF' : '#E2E8F0';
+          ctx.fillStyle = (x / size + y / size) % 2 === 0 ? '#FFFFFF' : '#E4E4E7';
           ctx.fillRect(x, y, size, size);
         }
       }
@@ -162,7 +163,6 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
 
     if (!loadedImg) return;
 
-    // 2. Compute Subject Framing
     const scaleRatio = (preset.subject_area_ratio || 0.82) * safeTransform.scale;
     const maxSubjectW = canvas.width * scaleRatio;
     const maxSubjectH = canvas.height * scaleRatio;
@@ -177,13 +177,11 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     }
 
     const drawX = (canvas.width - drawW) / 2 + safeTransform.offsetX;
-    const drawY = (canvas.height - drawH) / 2 + (canvas.height * 0.02) + safeTransform.offsetY;
+    const drawY = (canvas.height - drawH) / 2 + canvas.height * 0.02 + safeTransform.offsetY;
 
-    // 3. Render Processed Scene (or Split Scene)
     const splitX = canvas.width * splitPos;
 
     if (splitSliderEnabled && origImg) {
-      // LEFT SIDE: Draw original unmodified scene clipped to splitX
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, 0, splitX, canvas.height);
@@ -191,7 +189,6 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       ctx.drawImage(origImg, drawX, drawY, drawW, drawH);
       ctx.restore();
 
-      // RIGHT SIDE: Draw processed scene with shadows & adjustments clipped to remaining area
       ctx.save();
       ctx.beginPath();
       ctx.rect(splitX, 0, canvas.width - splitX, canvas.height);
@@ -201,7 +198,6 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
         renderShadow(ctx, loadedImg, drawX, drawY, drawW, drawH, shadow);
       }
 
-      // Draw adjusted subject
       const offscreen = document.createElement('canvas');
       offscreen.width = Math.max(1, Math.round(drawW));
       offscreen.height = Math.max(1, Math.round(drawH));
@@ -223,11 +219,8 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       }
       ctx.restore();
 
-      // Draw split divider line & handle
       renderSplitDivider(ctx, canvas.height, splitX);
-
     } else {
-      // Normal full-processed render
       if (asset?.hasBackgroundRemoved) {
         renderShadow(ctx, loadedImg, drawX, drawY, drawW, drawH, shadow);
       }
@@ -253,14 +246,12 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       }
     }
 
-    // 4. Overlays: Promo Badges & Watermarks
     renderPromoBadge(ctx, canvas.width, canvas.height, promoBadge);
     renderWatermark(ctx, canvas.width, canvas.height, watermark);
 
-    // 5. Guides & Transform Handles
     if (showGrid) {
       ctx.save();
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.strokeStyle = 'rgba(113, 113, 122, 0.45)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(canvas.width / 3, 0);
@@ -283,6 +274,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       renderBoundingBox(ctx, drawX, drawY, drawW, drawH);
     }
   }, [
+    asset,
     loadedImg,
     origImg,
     preset,
@@ -290,23 +282,22 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     adjustments,
     promoBadge,
     watermark,
-    transform,
+    safeTransform.offsetX,
+    safeTransform.offsetY,
+    safeTransform.scale,
     bgMode,
     showSafeZone,
     showGrid,
     showHandles,
     splitSliderEnabled,
     splitPos,
-    asset?.hasBackgroundRemoved,
   ]);
 
-  // Handle Mouse Events for Dragging Product & Split Slider
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
     if (splitSliderEnabled) {
       const splitX = canvas.width * splitPos;
@@ -349,210 +340,170 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     setIsDraggingProduct(false);
   };
 
+  const isTransformed =
+    safeTransform.offsetX !== 0 || safeTransform.offsetY !== 0 || safeTransform.scale !== 1;
+  const hasAssets = assets.length > 0 && Boolean(asset);
+  const presetName = lang === 'vi' ? preset.name_vi : preset.name_en;
+
   return (
-    <div className="flex-1 flex flex-col bg-slate-100 overflow-hidden relative select-none">
-      {/* Top Floating Viewport Toolbar */}
-      <div className="h-11 border-b border-surface-border bg-surface-light px-4 flex items-center justify-between z-10 shadow-2xs">
-        {/* View Mode Switcher & Preset Info */}
-        <div className="flex items-center gap-3 text-xs">
-          {/* Mode Switcher */}
-          <div className="flex items-center rounded-md border border-slate-200 bg-slate-100 p-0.5 text-xs">
+    <main className="flex-1 min-w-0 flex flex-col bg-zinc-50 overflow-hidden relative select-none">
+      {/* Adaptive Non-Overlapping Top Canvas Toolbar */}
+      <div
+        data-testid="canvas-top-toolbar"
+        className="min-h-12 px-4 py-2 border-b border-surface-border bg-surface-light flex flex-wrap items-center justify-between gap-x-4 gap-y-2 z-10"
+      >
+        {/* Left Group: Mode Switcher + Active Preset Readout */}
+        <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
+          <div className="flex items-center rounded-lg border border-zinc-200 bg-zinc-100 p-1 gap-1 shrink-0 max-w-full">
             <button
+              type="button"
               onClick={() => setViewMode('editor')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-medium transition-colors ${
+              className={`flex items-center gap-2 px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                 viewMode === 'editor'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-white text-zinc-900 shadow-sm'
+                  : 'text-zinc-600 hover:text-zinc-900'
               }`}
             >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>Canvas Studio</span>
+              <ImageIcon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+              <span>{t.toolbar_canvas_studio}</span>
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('gallery')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-medium transition-colors ${
+              className={`flex items-center gap-2 px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap tabular-nums transition-colors ${
                 viewMode === 'gallery'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-white text-zinc-900 shadow-sm'
+                  : 'text-zinc-600 hover:text-zinc-900'
               }`}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Xem Lưới Hàng Loạt ({assets.length})</span>
+              <LayoutGrid className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+              <span>
+                {t.toolbar_batch_grid} ({assets.length})
+              </span>
             </button>
           </div>
 
-          <span className="text-slate-300">|</span>
-
-          {/* Preset Info */}
-          <div className="hidden lg:flex items-center gap-1.5">
-            <span className="font-bold text-slate-800">{preset.name_vi}</span>
-            <span className="text-slate-500 font-mono text-[11px]">
-              {preset.width} × {preset.height} px ({preset.aspect_ratio})
+          <div
+            data-testid="toolbar-preset-info"
+            className="flex items-center gap-2 min-w-0 max-w-full px-2 py-1 rounded-md bg-zinc-50 border border-zinc-200"
+            title={presetName}
+          >
+            <span className="text-xs font-medium text-zinc-800 truncate">
+              {preset.marketplace}
+            </span>
+            <span className="text-xs font-mono tabular-nums text-zinc-500 whitespace-nowrap shrink-0">
+              {preset.width}×{preset.height} ({preset.aspect_ratio})
             </span>
           </div>
         </div>
 
-        {/* View Controls (Only active in editor mode) */}
+        {/* Right Group: Editor Tools or Gallery Hint */}
         {viewMode === 'editor' ? (
-          <div className="flex items-center gap-2">
-            {/* Before/After Split Slider Toggle */}
+          <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
             <button
+              type="button"
+              disabled={!hasAssets}
               onClick={() => setSplitSliderEnabled(!splitSliderEnabled)}
-              className={`px-2.5 py-1 rounded text-xs flex items-center gap-1.5 font-medium transition-all ${
+              className={`h-8 px-3 rounded-md text-xs font-medium border flex items-center gap-2 whitespace-nowrap transition-colors disabled:opacity-40 disabled:pointer-events-none ${
                 splitSliderEnabled
-                  ? 'bg-kroma-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900 bg-surface-subtle border border-surface-border'
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100 hover:text-zinc-900'
               }`}
               title={t.split_slider}
             >
-              <SplitSquareVertical className="w-3.5 h-3.5" />
-              <span className="text-[11px] hidden sm:inline">Before/After</span>
+              <SplitSquareVertical className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+              <span>{t.toolbar_before_after}</span>
             </button>
 
-            {/* Transform handles toggle */}
             <button
+              type="button"
+              disabled={!hasAssets}
               onClick={() => setShowHandles(!showHandles)}
-              className={`p-1.5 rounded transition-colors ${
+              className={`h-8 w-8 rounded-md border flex items-center justify-center transition-colors disabled:opacity-40 disabled:pointer-events-none ${
                 showHandles
-                  ? 'bg-slate-200 text-slate-900'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100 hover:text-zinc-900'
               }`}
               title={t.show_handles}
+              aria-label={t.show_handles}
             >
-              <Move className="w-3.5 h-3.5" />
+              <Move className="w-4 h-4" strokeWidth={1.5} />
             </button>
 
-            {/* Reset position button */}
-            {(safeTransform.offsetX !== 0 || safeTransform.offsetY !== 0 || safeTransform.scale !== 1) && (
+            {hasAssets && isTransformed && (
               <button
+                type="button"
                 onClick={() => onTransformChange({ offsetX: 0, offsetY: 0, scale: 1 })}
-                className="p-1.5 text-slate-500 hover:text-slate-900 rounded"
-                title="Đặt lại vị trí căn giữa"
+                className="h-8 w-8 rounded-md border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 flex items-center justify-center transition-colors"
+                title={t.reset_transform}
+                aria-label={t.reset_transform}
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-4 h-4" strokeWidth={1.5} />
               </button>
             )}
 
-            {/* Safe-zone toggle */}
             <button
+              type="button"
+              disabled={!hasAssets}
               onClick={() => setShowSafeZone(!showSafeZone)}
-              className={`p-1.5 rounded text-xs flex items-center gap-1 transition-colors ${
+              className={`h-8 px-3 rounded-md text-xs font-medium border flex items-center whitespace-nowrap transition-colors disabled:opacity-40 disabled:pointer-events-none ${
                 showSafeZone
-                  ? 'bg-cyan-50 text-cyan-700 border border-cyan-200'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100 hover:text-zinc-900'
               }`}
               title={t.safe_zone_toggle}
             >
-              <span className="text-[11px] font-medium">Safe Zone</span>
+              <span>{t.toolbar_safe_zone}</span>
             </button>
 
-            {/* Grid 3x3 toggle */}
             <button
+              type="button"
+              disabled={!hasAssets}
               onClick={() => setShowGrid(!showGrid)}
-              className={`p-1.5 rounded transition-colors ${
+              className={`h-8 w-8 rounded-md border flex items-center justify-center transition-colors disabled:opacity-40 disabled:pointer-events-none ${
                 showGrid
-                  ? 'bg-slate-200 text-slate-900'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100 hover:text-zinc-900'
               }`}
-              title="Lưới bố cục 1/3"
+              title={t.grid_toggle}
+              aria-label={t.grid_toggle}
             >
-              <Grid3X3 className="w-3.5 h-3.5" />
+              <Grid3X3 className="w-4 h-4" strokeWidth={1.5} />
             </button>
-
-            {/* Studio Backdrops */}
-            <div className="flex items-center bg-slate-100 p-0.5 rounded border border-slate-200 text-xs">
-              <button
-                onClick={() => setBgMode('white')}
-                className={`p-1 rounded transition-colors ${
-                  bgMode === 'white' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
-                }`}
-                title={t.view_white}
-              >
-                <Sun className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setBgMode('dark')}
-                className={`p-1 rounded transition-colors ${
-                  bgMode === 'dark' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
-                }`}
-                title={t.view_dark}
-              >
-                <Moon className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setBgMode('warm')}
-                className={`px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors ${
-                  bgMode === 'warm' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
-                }`}
-                title="Studio Podium"
-              >
-                Podium
-              </button>
-              <button
-                onClick={() => setBgMode('checker')}
-                className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
-                  bgMode === 'checker' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-500'
-                }`}
-                title={t.view_checkerboard}
-              >
-                PNG
-              </button>
-            </div>
-
-            {/* Zoom controls */}
-            <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
-              <button
-                onClick={() => setZoom((z) => Math.max(0.25, z - 0.15))}
-                className="p-1 text-slate-500 hover:text-slate-900"
-                title="Thu nhỏ"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-[11px] font-mono text-slate-600 min-w-[36px] text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <button
-                onClick={() => setZoom((z) => Math.min(3, z + 0.15))}
-                className="p-1 text-slate-500 hover:text-slate-900"
-                title="Phóng to"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setZoom(1)}
-                className="p-1 text-slate-500 hover:text-slate-900"
-                title="Về 100%"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
           </div>
         ) : (
-          <div className="text-xs text-slate-500 font-medium">
-            Bấm vào bất kỳ sản phẩm nào để mở chế độ biên tập chi tiết
+          <div className="text-xs text-zinc-500">
+            {hasAssets ? t.toolbar_gallery_hint : t.empty_drop_title}
           </div>
         )}
       </div>
 
-      {/* Main Content: Gallery Grid View or Single Canvas Studio View */}
-      {viewMode === 'gallery' ? (
-        <div className="flex-1 p-6 overflow-y-auto bg-slate-50">
+      {/* Main Content Area: Empty State, Gallery Grid, or Canvas Studio Stage */}
+      {!hasAssets ? (
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8 overflow-y-auto">
+          <EmptyCanvasState lang={lang} preset={preset} onUploadAssets={onUploadAssets} />
+        </div>
+      ) : viewMode === 'gallery' ? (
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-zinc-50">
           <div className="max-w-6xl mx-auto space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-200">
               <div>
-                <h2 className="text-sm font-bold text-slate-800">
-                  Bộ sưu tập Hàng loạt ({assets.length} sản phẩm)
+                <h2 className="text-sm font-semibold text-zinc-900 tabular-nums">
+                  {t.gallery_title} ({assets.length} {t.gallery_unit})
                 </h2>
-                <p className="text-xs text-slate-500">
-                  Chuẩn hóa theo mẫu sàn: <strong className="text-slate-700">{preset.name_vi} ({preset.width}x{preset.height})</strong>
+                <p className="text-xs text-zinc-500 mt-1 tabular-nums">
+                  {t.gallery_preset_note}:{' '}
+                  <span className="font-medium text-zinc-800">
+                    {presetName} ({preset.width}×{preset.height})
+                  </span>
                 </p>
               </div>
-              <span className="px-2.5 py-1 rounded text-xs font-medium bg-kroma-50 text-kroma-700 border border-kroma-200">
-                100% Xử lý Client-Side
+              <span className="px-2 py-1 rounded-md text-xs font-medium bg-kroma-50 text-kroma-700 border border-kroma-200">
+                {t.gallery_client_note}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
               {assets.map((item) => {
                 const isSelected = item.id === asset?.id;
                 return (
@@ -562,51 +513,49 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
                       if (onSelectAsset) onSelectAsset(item.id);
                       setViewMode('editor');
                     }}
-                    className={`group rounded-xl border p-3 bg-white shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between ${
+                    className={`group rounded-xl border p-3 bg-white shadow-sm transition-[border-color,box-shadow] cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'border-kroma-600 ring-2 ring-kroma-500/20'
-                        : 'border-slate-200 hover:border-slate-400'
+                        ? 'border-kroma-600 ring-2 ring-kroma-600/20'
+                        : 'border-zinc-200 hover:border-zinc-400'
                     }`}
                   >
                     <div>
-                      {/* Image Preview Container */}
-                      <div className="w-full aspect-square bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center p-3 relative mb-3">
+                      <div className="w-full aspect-square bg-zinc-100 rounded-lg overflow-hidden flex items-center justify-center p-3 relative mb-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={item.processedUrl || item.originalUrl}
                           alt={item.name}
-                          className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
+                          className="max-h-full max-w-full object-contain"
                         />
-                        {/* Status badge */}
                         <div className="absolute top-2 right-2">
                           {item.hasBackgroundRemoved ? (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 shadow-xs">
-                              <Check className="w-2.5 h-2.5" />
+                            <span className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <Check className="w-3 h-3" strokeWidth={1.5} />
                               <span>AI Cutout</span>
                             </span>
                           ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 text-slate-700">
-                              Ảnh gốc
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-zinc-200 text-zinc-700">
+                              {t.gallery_original}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Title & metadata */}
-                      <h3 className="text-xs font-semibold text-slate-800 truncate mb-1">
+                      <h3 className="text-xs font-medium text-zinc-900 truncate mb-1">
                         {item.name}
                       </h3>
-                      <p className="text-[11px] text-slate-500 font-mono">
+                      <p className="text-xs text-zinc-500 font-mono tabular-nums">
                         {item.width} × {item.height} px
                       </p>
                     </div>
 
-                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-[11px] font-medium text-kroma-600 group-hover:text-kroma-700">
-                        Chỉnh sửa Canvas &rarr;
+                    <div className="mt-3 pt-2 border-t border-zinc-100 flex items-center justify-between">
+                      <span className="text-xs font-medium text-kroma-600 group-hover:text-kroma-700">
+                        {t.gallery_edit_action}
                       </span>
                       {isSelected && (
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">
-                          Đang chọn
+                        <span className="text-xs font-medium text-zinc-500">
+                          {t.gallery_selected}
                         </span>
                       )}
                     </div>
@@ -619,45 +568,137 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       ) : (
         /* Interactive Single Canvas Stage */
         <div
-          className="flex-1 flex items-center justify-center p-8 overflow-auto relative"
+          className="flex-1 flex items-center justify-center p-4 sm:p-8 pb-20 overflow-auto relative"
           onMouseUp={handleMouseUp}
         >
           {isRemovingBg && (
-            <div className="absolute inset-0 bg-white/75 backdrop-blur-xs flex flex-col items-center justify-center z-30 gap-2.5">
-              <div className="w-9 h-9 rounded-full border-3 border-kroma-600 border-t-transparent animate-spin" />
-              <p className="text-xs font-bold text-slate-800">{t.removing_bg}</p>
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-kroma-600 border-t-transparent animate-spin" />
+              <p className="text-xs font-medium text-zinc-800">{t.removing_bg}</p>
             </div>
           )}
 
-          {!asset ? (
-            <div className="text-center py-24 text-slate-400 text-xs">
-              Vui lòng chọn hoặc tải ảnh từ cột bên trái để bắt đầu xử lý
-            </div>
-          ) : (
-            <div
-              style={{
-                transform: `scale(${zoom})`,
-                transformOrigin: 'center center',
-                transition: isDraggingProduct || isDraggingSlider ? 'none' : 'transform 0.1s ease-out',
-              }}
-              className="shadow-2xl rounded-lg overflow-hidden border border-slate-300 relative bg-white"
-            >
-              <canvas
-                ref={canvasRef}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                className={`block max-w-none ${
-                  splitSliderEnabled
-                    ? 'cursor-ew-resize'
-                    : isDraggingProduct
-                    ? 'cursor-grabbing'
-                    : 'cursor-grab'
+          <div
+            style={{
+              transform: `scale(${zoom})`,
+              transformOrigin: 'center center',
+              transition:
+                isDraggingProduct || isDraggingSlider ? 'none' : 'transform 150ms cubic-bezier(0.22, 1, 0.36, 1)',
+            }}
+            className="max-w-full rounded-lg overflow-hidden border border-zinc-200 shadow-sm relative bg-white"
+          >
+            <canvas
+              ref={canvasRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              style={{ aspectRatio: `${preset.width} / ${preset.height}` }}
+              className={`block max-w-full max-h-[calc(100vh-14rem)] w-auto h-auto ${
+                splitSliderEnabled
+                  ? 'cursor-ew-resize'
+                  : isDraggingProduct
+                  ? 'cursor-grabbing'
+                  : 'cursor-grab'
+              }`}
+            />
+          </div>
+
+          {/* Floating Bottom Canvas Dock (Studio Backdrops + Zoom) */}
+          <div
+            data-testid="canvas-bottom-dock"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-[calc(100%-2rem)] overflow-x-auto z-20 flex items-center gap-2 px-2 py-1 rounded-xl bg-white/95 backdrop-blur-sm border border-zinc-200 shadow-sm"
+          >
+            {/* Studio Backdrops */}
+            <div className="flex items-center bg-zinc-100 p-1 rounded-lg border border-zinc-200 gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setBgMode('white')}
+                className={`h-7 w-7 rounded-md flex items-center justify-center transition-colors ${
+                  bgMode === 'white'
+                    ? 'bg-white shadow-sm text-zinc-900'
+                    : 'text-zinc-500 hover:text-zinc-900'
                 }`}
-              />
+                title={t.view_white}
+                aria-label={t.view_white}
+              >
+                <Sun className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setBgMode('dark')}
+                className={`h-7 w-7 rounded-md flex items-center justify-center transition-colors ${
+                  bgMode === 'dark'
+                    ? 'bg-white shadow-sm text-zinc-900'
+                    : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+                title={t.view_dark}
+                aria-label={t.view_dark}
+              >
+                <Moon className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setBgMode('warm')}
+                className={`h-7 px-2 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                  bgMode === 'warm'
+                    ? 'bg-white shadow-sm text-zinc-900'
+                    : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+                title={t.view_warm}
+              >
+                Podium
+              </button>
+              <button
+                type="button"
+                onClick={() => setBgMode('checker')}
+                className={`h-7 px-2 rounded-md text-xs font-mono whitespace-nowrap transition-colors ${
+                  bgMode === 'checker'
+                    ? 'bg-white shadow-sm text-zinc-900'
+                    : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+                title={t.view_checkerboard}
+              >
+                PNG
+              </button>
             </div>
-          )}
+
+            <div className="h-4 w-px bg-zinc-200 shrink-0" />
+
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(0.25, z - 0.15))}
+                className="h-7 w-7 rounded-md text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 flex items-center justify-center transition-colors"
+                title={t.zoom_out}
+                aria-label={t.zoom_out}
+              >
+                <ZoomOut className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+              <span className="text-xs font-mono tabular-nums text-zinc-700 min-w-12 text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(3, z + 0.15))}
+                className="h-7 w-7 rounded-md text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 flex items-center justify-center transition-colors"
+                title={t.zoom_in}
+                aria-label={t.zoom_in}
+              >
+                <ZoomIn className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(1)}
+                className="h-7 w-7 rounded-md text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 flex items-center justify-center transition-colors"
+                title={t.zoom_reset}
+                aria-label={t.zoom_reset}
+              >
+                <Maximize2 className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </main>
   );
 };

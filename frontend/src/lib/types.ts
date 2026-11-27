@@ -92,7 +92,6 @@ export interface ImageAsset {
   height: number;
   sizeBytes: number;
   hasBackgroundRemoved: boolean;
-  isSample?: boolean;
 }
 
 export interface ProofingComment {

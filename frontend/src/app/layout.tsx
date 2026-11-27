@@ -18,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body className="antialiased min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      <body className="antialiased min-h-screen flex flex-col bg-zinc-50 text-zinc-900 overflow-x-hidden">
         {children}
       </body>
     </html>
