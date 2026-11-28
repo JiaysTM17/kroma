@@ -7,6 +7,7 @@ import { CanvasWorkspace } from '@/components/CanvasWorkspace';
 import { SidebarRight } from '@/components/SidebarRight';
 import { BatchExportModal } from '@/components/BatchExportModal';
 import { ProofingModal } from '@/components/ProofingModal';
+import { PreFlightModal } from '@/components/PreFlightModal';
 import {
   AdjustmentValues,
   ImageAsset,
@@ -90,6 +91,7 @@ export default function StudioPage() {
   // Modals & Notifications
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isProofingModalOpen, setIsProofingModalOpen] = useState<boolean>(false);
+  const [isPreFlightOpen, setIsPreFlightOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -320,6 +322,7 @@ export default function StudioPage() {
         onLanguageChange={setLang}
         onOpenExport={() => setIsExportModalOpen(true)}
         onOpenProofing={() => setIsProofingModalOpen(true)}
+        onOpenPreFlight={() => setIsPreFlightOpen(true)}
         activeMobilePanel={mobilePanel}
         onToggleLeftPanel={() => setMobilePanel((p) => (p === 'left' ? 'none' : 'left'))}
         onToggleRightPanel={() => setMobilePanel((p) => (p === 'right' ? 'none' : 'right'))}
@@ -412,6 +415,17 @@ export default function StudioPage() {
         isOpen={isProofingModalOpen}
         onClose={() => setIsProofingModalOpen(false)}
         projectId="kroma_proj_ecommerce"
+      />
+      {/* Marketplace Compliance Pre-Flight Modal */}
+      <PreFlightModal
+        isOpen={isPreFlightOpen}
+        onClose={() => setIsPreFlightOpen(false)}
+        lang={lang}
+        currentImageSrc={
+          assets.find((a) => a.id === selectedAssetId)?.processedUrl ||
+          assets.find((a) => a.id === selectedAssetId)?.originalUrl ||
+          (assets.length > 0 ? assets[0].processedUrl || assets[0].originalUrl : null)
+        }
       />
       {/* Toast Notification */}
       {toastMessage && (

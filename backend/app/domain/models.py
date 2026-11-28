@@ -195,3 +195,25 @@ class ProofingSession:
     updated_at: str = ""
     comments: tuple[ProofingComment, ...] = ()
     events: tuple[ProofingEvent, ...] = ()
+
+
+@dataclass(frozen=True)
+class ComplianceCheckResult:
+    check_id: str
+    title: str
+    status: str  # "pass" | "warn" | "fail"
+    score: float  # 0.0 - 100.0
+    message: str
+    expected: str
+    actual: str
+
+
+@dataclass(frozen=True)
+class MarketplacePreFlightReport:
+    marketplace: str
+    preset_id: str
+    is_compliant: bool
+    overall_score: float  # 0.0 - 100.0
+    checks: list[ComplianceCheckResult]
+    recommended_actions: list[str]
+

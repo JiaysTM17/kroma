@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Share2, Download, PanelLeft, SlidersHorizontal } from 'lucide-react';
+import { Share2, Download, PanelLeft, SlidersHorizontal, ShieldCheck } from 'lucide-react';
 import { Language, translations } from '@/lib/i18n';
 
 interface HeaderProps {
@@ -9,6 +9,7 @@ interface HeaderProps {
   onLanguageChange: (lang: Language) => void;
   onOpenExport: () => void;
   onOpenProofing: () => void;
+  onOpenPreFlight?: () => void;
   activeMobilePanel?: 'none' | 'left' | 'right';
   onToggleLeftPanel?: () => void;
   onToggleRightPanel?: () => void;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLanguageChange,
   onOpenExport,
   onOpenProofing,
+  onOpenPreFlight,
   activeMobilePanel = 'none',
   onToggleLeftPanel,
   onToggleRightPanel,
@@ -96,6 +98,20 @@ export const Header: React.FC<HeaderProps> = ({
             EN
           </button>
         </div>
+
+        {/* Pre-Flight Quality Inspector */}
+        {onOpenPreFlight && (
+          <button
+            type="button"
+            onClick={onOpenPreFlight}
+            title={lang === 'vi' ? 'Kiểm chuẩn sàn' : 'Pre-flight check'}
+            aria-label={lang === 'vi' ? 'Kiểm chuẩn sàn' : 'Pre-flight check'}
+            className="h-8 px-2 sm:px-3 flex items-center justify-center gap-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors whitespace-nowrap"
+          >
+            <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" strokeWidth={1.5} />
+            <span className="hidden md:inline">{lang === 'vi' ? 'Kiểm chuẩn sàn' : 'Audit'}</span>
+          </button>
+        )}
 
         {/* Share Proofing Link */}
         <button
