@@ -623,7 +623,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
           {/* Floating Bottom Canvas Dock (Studio Backdrops + Zoom) */}
           <div
             data-testid="canvas-bottom-dock"
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-[calc(100%-2rem)] overflow-x-auto z-20 flex items-center gap-2 px-2 py-1 rounded-xl bg-white/95 backdrop-blur-sm border border-zinc-200 shadow-sm"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-[calc(100%-2rem)] overflow-x-auto z-20 flex items-center gap-1 sm:gap-2 px-2 py-1 rounded-xl bg-white/95 backdrop-blur-sm border border-zinc-200 shadow-sm"
           >
             {/* Studio Backdrops */}
             <div className="flex items-center bg-zinc-100 p-1 rounded-lg border border-zinc-200 gap-1 shrink-0">
@@ -692,7 +692,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
               >
                 <ZoomOut className="w-4 h-4" strokeWidth={1.5} />
               </button>
-              <span className="text-xs font-mono tabular-nums text-zinc-700 min-w-12 text-center">
+              <span className="text-xs font-mono tabular-nums text-zinc-700 min-w-10 sm:min-w-12 text-center">
                 {Math.round(zoom * 100)}%
               </span>
               <button

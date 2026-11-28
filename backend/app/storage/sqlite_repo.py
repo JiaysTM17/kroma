@@ -5,10 +5,11 @@ import math
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import ConflictError, GoneError, NotFoundError
 from app.core.ids import new_id, utc_now_iso
 from app.domain.enums import (
     AssetKind,
@@ -32,7 +33,7 @@ from app.domain.models import (
     SafeZone,
 )
 from app.domain.presets import CANONICAL_SYSTEM_PRESETS
-from app.domain.rules import compute_batch_progress
+from app.domain.rules import compute_batch_progress, is_session_expired
 from app.storage.ports import DeletedProjectArtifacts
 
 _ASSET_COLUMNS = (
@@ -1598,16 +1599,19 @@ class SQLiteRepo:
                 conn.rollback()
                 return None
             effective_started = str(row["started_at"]) if row["started_at"] else started_at
-            conn.execute(
+            cursor = conn.execute(
                 """
                 UPDATE batch_jobs
                 SET status = ?,
                     started_at = ?,
                     updated_at = ?
-                WHERE id = ?;
+                WHERE id = ? AND status IN ('queued', 'running');
                 """,
                 (BatchStatus.RUNNING.value, effective_started, started_at, job_id),
             )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return None
             updated = conn.execute(
                 f"SELECT {_BATCH_JOB_COLUMNS} FROM batch_jobs WHERE id = ?;",
                 (job_id,),
@@ -2013,6 +2017,23 @@ class SQLiteRepo:
                 sessions.append(self._row_to_proofing_session(row, comments, events))
             return sessions
 
+    def _assert_proofing_session_active_on_conn(
+        self, conn: sqlite3.Connection, session_id: str
+    ) -> None:
+        row = conn.execute(
+            "SELECT revoked_at, expires_at FROM proofing_sessions WHERE id = ?;",
+            (session_id,),
+        ).fetchone()
+        if row is None:
+            conn.rollback()
+            raise NotFoundError(f"Proofing session '{session_id}' not found")
+        if row["revoked_at"] is not None:
+            conn.rollback()
+            raise GoneError("Proofing session has been revoked")
+        if is_session_expired(row["expires_at"], datetime.now(timezone.utc)):
+            conn.rollback()
+            raise GoneError("Proofing session has expired")
+
     def add_proofing_comment(
         self,
         session_id: str,
@@ -2026,13 +2047,7 @@ class SQLiteRepo:
     ) -> ProofingSession:
         with self._session() as conn:
             conn.execute("BEGIN IMMEDIATE;")
-            row = conn.execute(
-                "SELECT 1 FROM proofing_sessions WHERE id = ?;",
-                (session_id,),
-            ).fetchone()
-            if row is None:
-                conn.rollback()
-                raise NotFoundError(f"Proofing session '{session_id}' not found")
+            self._assert_proofing_session_active_on_conn(conn, session_id)
 
             conn.execute(
                 f"""
@@ -2111,6 +2126,7 @@ class SQLiteRepo:
     ) -> ProofingComment:
         with self._session() as conn:
             conn.execute("BEGIN IMMEDIATE;")
+            self._assert_proofing_session_active_on_conn(conn, comment.session_id)
             cursor = conn.execute(
                 """
                 UPDATE proofing_comments
@@ -2176,6 +2192,7 @@ class SQLiteRepo:
     ) -> bool:
         with self._session() as conn:
             conn.execute("BEGIN IMMEDIATE;")
+            self._assert_proofing_session_active_on_conn(conn, session_id)
             cursor = conn.execute(
                 "DELETE FROM proofing_comments WHERE id = ? AND session_id = ?;",
                 (comment_id, session_id),
@@ -2220,6 +2237,7 @@ class SQLiteRepo:
     ) -> ProofingSession:
         with self._session() as conn:
             conn.execute("BEGIN IMMEDIATE;")
+            self._assert_proofing_session_active_on_conn(conn, session_id)
             cursor = conn.execute(
                 """
                 UPDATE proofing_sessions

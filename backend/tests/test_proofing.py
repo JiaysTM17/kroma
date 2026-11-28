@@ -222,6 +222,16 @@ def test_proofing_comments_crud_decisions_and_gone_states(
     assert unresolve_res.json()["resolved"] is False
     assert unresolve_res.json()["resolved_at"] is None
 
+    # PATCH with resolved_by alone (no body or resolved) -> 422 VALIDATION_ERROR and no spurious event
+    events_before = len(client.get(f"/v1/proofing/{sid}").json()["events"])
+    rby_only = client.patch(
+        f"/v1/proofing/{sid}/comments/{cid}",
+        json={"resolved_by": "Bob"},
+    )
+    assert rby_only.status_code == 422
+    assert rby_only.json()["code"] == "VALIDATION_ERROR"
+    assert len(client.get(f"/v1/proofing/{sid}").json()["events"]) == events_before
+
     # DELETE comment
     del_res = client.delete(f"/v1/proofing/{sid}/comments/{cid}")
     assert del_res.status_code == 200
@@ -340,3 +350,62 @@ def test_proofing_br14_revision_invalidation_on_project_state_update(
     assert inv_event["from_status"] == "approved"
     assert inv_event["to_status"] == "pending"
     assert inv_event["payload"]["new_revision_id"] == rev_2
+
+
+def test_proofing_repo_rejects_concurrent_revoke_toctou(
+    client: TestClient, test_settings: Settings
+) -> None:
+    import pytest
+    from app.core.errors import GoneError
+    from app.core.ids import new_id, utc_now_iso
+    from app.domain.enums import ProofingAction, ProofingStatus
+    from app.domain.models import ProofingComment, ProofingEvent
+
+    proj = _create_project(client, "TOCTOU Proof")
+    session = client.post(
+        "/v1/proofing",
+        json={"project_id": proj["id"], "title": "Revoke Race"},
+    ).json()
+    sid = session["id"]
+    now = utc_now_iso()
+    with sqlite3.connect(test_settings.sqlite_path) as conn:
+        conn.execute(
+            "UPDATE proofing_sessions SET revoked_at = ? WHERE id = ?;",
+            (now, sid),
+        )
+        conn.commit()
+
+    repo = client.app.state.container.repo
+    with pytest.raises(GoneError):
+        repo.add_proofing_comment(
+            sid,
+            ProofingComment(
+                id="fb_toctou",
+                session_id=sid,
+                author="Client",
+                action=ProofingAction.COMMENT,
+                body="Late comment",
+                pin_x=None,
+                pin_y=None,
+                resolved=False,
+                resolved_by=None,
+                resolved_at=None,
+                created_at=now,
+                updated_at=now,
+            ),
+            new_status=ProofingStatus.IN_REVIEW,
+            approved_by=None,
+            approved_at=None,
+            updated_at=now,
+            event=ProofingEvent(
+                id=new_id(),
+                session_id=sid,
+                actor="Client",
+                event_type="feedback_submitted",
+                from_status="pending",
+                to_status="in_review",
+                note="Late comment",
+                payload={},
+                created_at=now,
+            ),
+        )

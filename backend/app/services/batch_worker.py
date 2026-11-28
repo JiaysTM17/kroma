@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
@@ -378,6 +379,7 @@ class BatchWorkerService:
         self._shutting_down = threading.Event()
         self._cancel_events: dict[str, threading.Event] = {}
         self._futures: dict[str, Future[None]] = {}
+        self._active_run_tokens: dict[str, str] = {}
         self._executor: ThreadPoolExecutor | None = None
 
     def _ensure_executor(self) -> ThreadPoolExecutor:
@@ -430,11 +432,25 @@ class BatchWorkerService:
 
     def _enqueue_job(self, job_id: str) -> None:
         executor = self._ensure_executor()
-        cancel_ev = self._get_cancel_event(job_id)
-        cancel_ev.clear()
-        future = executor.submit(self._run_job, job_id)
+        token = uuid.uuid4().hex
         with self._lock:
+            ev = self._cancel_events.get(job_id)
+            if ev is None:
+                ev = threading.Event()
+                self._cancel_events[job_id] = ev
+            ev.clear()
+            self._active_run_tokens[job_id] = token
+            future = executor.submit(self._run_job, job_id, token)
             self._futures[job_id] = future
+
+    def _cleanup_job_handles(self, job_id: str, run_token: str | None) -> None:
+        with self._lock:
+            current_token = self._active_run_tokens.get(job_id)
+            if run_token is not None and current_token != run_token:
+                return
+            self._active_run_tokens.pop(job_id, None)
+            self._futures.pop(job_id, None)
+            self._cancel_events.pop(job_id, None)
 
     def _staging_dir(self, job_id: str) -> Path:
         return assert_safe_relative_path(f".staging/{job_id}", self._settings.exports_dir)
@@ -650,12 +666,27 @@ class BatchWorkerService:
 
     def cancel_batch_job(self, job_id: str) -> tuple[BatchJob, list[BatchJobItem]]:
         self._get_cancel_event(job_id).set()
-        result = self._repo.request_batch_job_cancel(job_id, utc_now_iso())
+        try:
+            result = self._repo.request_batch_job_cancel(job_id, utc_now_iso())
+        except Exception:
+            with self._lock:
+                if job_id not in self._active_run_tokens:
+                    self._cancel_events.pop(job_id, None)
+                    self._futures.pop(job_id, None)
+            raise
         if result is None:
+            with self._lock:
+                if job_id not in self._active_run_tokens:
+                    self._cancel_events.pop(job_id, None)
+                    self._futures.pop(job_id, None)
             raise NotFoundError(f"Batch job '{job_id}' not found")
         job, _items = result
         if job.status == BatchStatus.CANCELLED:
             self._cleanup_staging(job_id)
+            with self._lock:
+                if job_id not in self._active_run_tokens:
+                    self._cancel_events.pop(job_id, None)
+                    self._futures.pop(job_id, None)
         return result
 
     def retry_batch_job(self, job_id: str) -> tuple[BatchJob, list[BatchJobItem]]:
@@ -679,7 +710,9 @@ class BatchWorkerService:
         return job, zip_path
 
     def _is_cancelled(self, job_id: str) -> bool:
-        if self._get_cancel_event(job_id).is_set():
+        with self._lock:
+            ev = self._cancel_events.get(job_id)
+        if ev is not None and ev.is_set():
             return True
         loaded = self._repo.get_batch_job(job_id)
         if loaded is None:
@@ -698,7 +731,13 @@ class BatchWorkerService:
             max_dimension=self._settings.max_image_dimension,
         )
 
-    def _run_job(self, job_id: str) -> None:
+    def _run_job(self, job_id: str, run_token: str | None = None) -> None:
+        try:
+            self._run_job_inner(job_id)
+        finally:
+            self._cleanup_job_handles(job_id, run_token)
+
+    def _run_job_inner(self, job_id: str) -> None:
         if self._shutting_down.is_set():
             return
         loaded = self._repo.get_batch_job(job_id)
@@ -741,7 +780,11 @@ class BatchWorkerService:
             if self._is_cancelled(job_id):
                 cancelled = True
                 break
-            if item.status == BatchItemStatus.COMPLETED:
+            if (
+                item.status == BatchItemStatus.COMPLETED
+                and item.output_filename
+                and assert_safe_relative_path(item.output_filename, staging_dir).is_file()
+            ):
                 continue
 
             item_start = utc_now_iso()
@@ -774,6 +817,34 @@ class BatchWorkerService:
                 rendered_bytes, out_w, out_h = self._render_item(running_item)
                 out_name = running_item.output_filename or f"{running_item.seq:03d}.bin"
                 staged_file = assert_safe_relative_path(out_name, staging_dir)
+                if self._is_cancelled(job_id):
+                    staged_file.unlink(missing_ok=True)
+                    cancelled_item = BatchJobItem(
+                        id=running_item.id,
+                        job_id=running_item.job_id,
+                        seq=running_item.seq,
+                        asset_id=running_item.asset_id,
+                        source_asset_id=running_item.source_asset_id,
+                        preset_id=running_item.preset_id,
+                        preset_version=running_item.preset_version,
+                        format=running_item.format,
+                        quality=running_item.quality,
+                        recipe_snapshot=running_item.recipe_snapshot,
+                        status=BatchItemStatus.CANCELLED,
+                        output_filename=running_item.output_filename,
+                        output_byte_size=0,
+                        output_width=0,
+                        output_height=0,
+                        error_code=None,
+                        error_message=None,
+                        attempts=running_item.attempts,
+                        created_at=running_item.created_at,
+                        started_at=item_start,
+                        completed_at=utc_now_iso(),
+                    )
+                    self._repo.update_batch_job_item(cancelled_item)
+                    cancelled = True
+                    break
                 staged_file.write_bytes(rendered_bytes)
                 finished_item = BatchJobItem(
                     id=running_item.id,
@@ -843,7 +914,16 @@ class BatchWorkerService:
             return
         cur_job, cur_items = refreshed
 
-        if cancelled:
+        has_cancelable_items = any(
+            it.status
+            in (
+                BatchItemStatus.PENDING,
+                BatchItemStatus.RUNNING,
+                BatchItemStatus.CANCELLED,
+            )
+            for it in cur_items
+        )
+        if cancelled and has_cancelable_items:
             now = utc_now_iso()
             self._repo.finalize_batch_job(
                 job_id,
@@ -879,17 +959,29 @@ class BatchWorkerService:
                 completed_at=now,
                 updated_at=now,
             )
+            self._cleanup_staging(job_id)
             return
 
         zip_filename = f"{job_id}.zip"
         zip_path = assert_safe_relative_path(zip_filename, self._settings.exports_dir)
         entries: list[tuple[str, bytes]] = []
         manifest_items: list[dict[str, Any]] = []
+        missing_staged_items: list[BatchJobItem] = []
+
         for it in cur_items:
-            if it.status == BatchItemStatus.COMPLETED and it.output_filename:
-                staged_file = assert_safe_relative_path(it.output_filename, staging_dir)
-                if staged_file.is_file():
-                    entries.append((it.output_filename, staged_file.read_bytes()))
+            item_sha256: str | None = None
+            if it.status == BatchItemStatus.COMPLETED:
+                staged_file = (
+                    assert_safe_relative_path(it.output_filename, staging_dir)
+                    if it.output_filename
+                    else None
+                )
+                if staged_file is None or not staged_file.is_file():
+                    missing_staged_items.append(it)
+                    continue
+                file_bytes = staged_file.read_bytes()
+                item_sha256 = hashlib.sha256(file_bytes).hexdigest()
+                entries.append((it.output_filename, file_bytes))
             manifest_items.append(
                 {
                     "id": it.id,
@@ -905,9 +997,54 @@ class BatchWorkerService:
                     "output_byte_size": it.output_byte_size,
                     "output_width": it.output_width,
                     "output_height": it.output_height,
+                    "sha256": item_sha256,
                     "error_code": it.error_code,
                     "error_message": it.error_message,
                 }
+            )
+
+        if missing_staged_items:
+            fail_ts = utc_now_iso()
+            for missing_it in missing_staged_items:
+                self._repo.update_batch_job_item(
+                    BatchJobItem(
+                        id=missing_it.id,
+                        job_id=missing_it.job_id,
+                        seq=missing_it.seq,
+                        asset_id=missing_it.asset_id,
+                        source_asset_id=missing_it.source_asset_id,
+                        preset_id=missing_it.preset_id,
+                        preset_version=missing_it.preset_version,
+                        format=missing_it.format,
+                        quality=missing_it.quality,
+                        recipe_snapshot=missing_it.recipe_snapshot,
+                        status=BatchItemStatus.FAILED,
+                        output_filename=missing_it.output_filename,
+                        output_byte_size=0,
+                        output_width=0,
+                        output_height=0,
+                        error_code="STAGING_MISSING",
+                        error_message=(
+                            f"Staged output file '{missing_it.output_filename}' "
+                            "missing during ZIP packaging"
+                        ),
+                        attempts=missing_it.attempts,
+                        created_at=missing_it.created_at,
+                        started_at=missing_it.started_at,
+                        completed_at=fail_ts,
+                    )
+                )
+            self._repo.finalize_batch_job(
+                job_id,
+                status=BatchStatus.FAILED,
+                zip_filename=None,
+                error_message="ZIP packaging aborted: staged output missing for completed item(s)",
+                completed_at=fail_ts,
+                updated_at=fail_ts,
+            )
+            self._cleanup_staging(job_id)
+            raise RuntimeError(
+                f"Batch job '{job_id}' aborted ZIP packaging due to missing staged file(s)"
             )
 
         manifest_payload = {
@@ -928,7 +1065,20 @@ class BatchWorkerService:
                 json.dumps(manifest_payload, indent=2, ensure_ascii=False).encode("utf-8"),
             ),
         )
-        _atomic_write_zip(zip_path, self._settings.exports_dir, entries)
+        try:
+            _atomic_write_zip(zip_path, self._settings.exports_dir, entries)
+        except Exception as exc:
+            fail_ts = utc_now_iso()
+            self._repo.finalize_batch_job(
+                job_id,
+                status=BatchStatus.FAILED,
+                zip_filename=None,
+                error_message=f"ZIP packaging failed: {exc}",
+                completed_at=fail_ts,
+                updated_at=fail_ts,
+            )
+            self._cleanup_staging(job_id)
+            raise
 
         self._repo.finalize_batch_job(
             job_id,
@@ -942,6 +1092,8 @@ class BatchWorkerService:
             completed_at=now,
             updated_at=now,
         )
+        if final_status in (BatchStatus.COMPLETED, BatchStatus.FAILED):
+            self._cleanup_staging(job_id)
 
     def execute_sync_export(
         self,
@@ -1067,6 +1219,7 @@ class BatchWorkerService:
                 ext = "jpg" if fmt == "jpeg" else fmt
                 safe_label = sanitize_upload_filename(recipe.preset_id).replace(".", "_")
                 member_name = f"image_{seq:03d}_{stem}_{safe_label}.{ext}"
+                file_sha256 = hashlib.sha256(rendered_bytes).hexdigest()
                 entries.append((member_name, rendered_bytes))
                 manifest_items.append(
                     {
@@ -1082,6 +1235,7 @@ class BatchWorkerService:
                         "output_byte_size": len(rendered_bytes),
                         "output_width": out_w,
                         "output_height": out_h,
+                        "sha256": file_sha256,
                     }
                 )
 

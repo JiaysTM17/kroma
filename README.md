@@ -170,7 +170,7 @@ kroma/
 │   ├── app/services/                                  # Tầng dịch vụ: AssetService, PresetService, ProjectService, BatchWorker, ProofingService
 │   ├── app/storage/                                   # Triển khai SQLite WAL, Local FS Blob Store, Ports & Stubs
 │   ├── pyproject.toml                                 # Cấu hình gói và pytest runner
-│   └── tests/                                         # 47 bài kiểm thử tự động E2E & Unit (100% Passing)
+│   └── tests/                                         # 51 bài kiểm thử tự động E2E & Unit (100% Passing)
 │
 ├── e2e/                                               # Khung kiểm thử hộp đen E2E Đa Tầng (Playwright)
 │   ├── tests/tier1/                                   # F01-F10 Functional Spec tests
@@ -213,7 +213,7 @@ python -m venv .venv
 source .venv/bin/activate  # Trên Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Chạy toàn bộ 47 test tự động (100% Pass)
+# Chạy toàn bộ 51 test tự động (100% Pass)
 pytest -v
 
 # Chạy máy chủ phát triển tại cổng 8000

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import zipfile
@@ -64,6 +65,7 @@ def test_export_batch_renders_real_pillow_images_for_project_assets(
         for item in manifest["items"]:
             raw_img = zf.read(item["output_filename"])
             assert raw_img != b"KROMA_SAMPLE_IMAGE_DATA"
+            assert item["sha256"] == hashlib.sha256(raw_img).hexdigest()
             with Image.open(io.BytesIO(raw_img)) as im:
                 if item["resolved_preset_id"] == "shopee_1_1":
                     assert im.size == (1024, 1024)
@@ -98,6 +100,7 @@ def test_export_batch_legacy_assetless_uses_real_pillow_pipeline(
         for item in manifest["items"]:
             raw = zf.read(item["output_filename"])
             assert raw != b"KROMA_SAMPLE_IMAGE_DATA"
+            assert item["sha256"] == hashlib.sha256(raw).hexdigest()
             with Image.open(io.BytesIO(raw)) as im:
                 assert im.width >= 1024 and im.height >= 1024
 

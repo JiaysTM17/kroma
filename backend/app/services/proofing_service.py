@@ -250,7 +250,7 @@ class ProofingService:
             if v is not None
         }
 
-        if not supplied:
+        if not (supplied & {"body", "resolved"}):
             raise ValidationAppError("At least one field (body or resolved) must be supplied")
 
         next_body = existing.body

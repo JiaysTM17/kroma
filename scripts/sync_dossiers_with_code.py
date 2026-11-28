@@ -66,10 +66,10 @@ def sync_doc_01():
                       "Loại bỏ hoàn toàn việc tải trước các ảnh mẫu rác. Khởi động ứng dụng với hàng đợi 0 ảnh, trung tâm là khung điều khiển EmptyCanvasState tinh giản theo chuẩn craft, tích hợp Dropzone kéo thả, hiển thị thông số chuẩn sàn đang chọn và hướng dẫn 3 bước thao tác.")
     
     add_bullet_styled(doc, "Hệ Thống Xử Lý Hàng Loạt & Worker Bất Đồng Bộ (Asynchronous Batch Processing Engine)", 
-                      "Hỗ trợ xuất hàng loạt (Batch Export Modal) lên đến 250 sản phẩm/lô. Worker chạy ngầm phân chia tác vụ đa luồng, hỗ trợ xuất đa định dạng sàn TMĐT (Shopee, Lazada, TikTok, Amazon Hero 85%) đóng gói thành tệp ZIP hoàn chỉnh với manifest kiểm định MD5.")
+                      "Hỗ trợ xuất hàng loạt (Batch Export Modal) lên đến 250 sản phẩm/lô. Worker chạy ngầm phân chia tác vụ đa luồng, quản lý run-token tránh rò rỉ tài nguyên khi hủy job, hỗ trợ xuất đa định dạng sàn TMĐT (Shopee, Lazada, TikTok, Amazon Hero 85%) đóng gói thành tệp ZIP hoàn chỉnh với manifest kiểm định mã băm SHA256.")
 
     add_bullet_styled(doc, "Cổng Phê Duyệt Khách Hàng Chuyên Nghiệp (Client Proofing Session & Feedback Lifecycle)", 
-                      "Tạo liên kết duyệt ảnh trực tiếp (/proof/[id]) chia sẻ an toàn cho khách hàng hoặc đối tác. Cho phép xem trước ảnh Before/After, phóng to kiểm tra chi tiết, gửi bình luận và phản hồi phê duyệt (Approve/Request Changes) đồng bộ thời gian thực về studio.")
+                      "Tạo liên kết duyệt ảnh trực tiếp (/proof/[id]) chia sẻ an toàn cho khách hàng hoặc đối tác. Cho phép xem trước ảnh Before/After, phóng to kiểm tra chi tiết, gửi bình luận và phản hồi phê duyệt (Approve/Request Changes) đồng bộ thời gian thực, cơ chế chống xung đột truy cập đồng thời (TOCTOU race protection).")
 
     add_bullet_styled(doc, "Hỗ Trợ Đa Ngôn Ngữ Chuẩn Hóa (i18n Localization Engine)", 
                       "Chuyển đổi giao diện tức thì giữa Tiếng Việt (VI) và Tiếng Anh (EN) trên toàn bộ hệ thống (Header, Sidebar, Canvas Toolbar, Bảng điều khiển màu và Cổng Proofing).")
@@ -86,13 +86,13 @@ def sync_doc_02():
     add_paragraph_styled(doc, "Dự án KROMA Studio đã được triển khai hoàn chỉnh thành công theo kiến trúc Local-First Client/Server hiện đại với mô hình Hexagonal Architecture (Ports and Adapters):")
     
     add_bullet_styled(doc, "Frontend KROMA Studio (Next.js 15 / React 19 / Tailwind CSS)", 
-                      "Chạy tại cổng http://localhost:3005 (tránh xung đột cổng 3000). Chứa bộ xử lý đồ họa Canvas 2D Engine, pipeline xử lý màu tuyến tính Float32 (Linear Color sRGB), quản lý lớp vẽ Layer Stack, điều hướng phím tắt, bộ thu nhận clipboard Ctrl+V, cổng duyệt khách hàng Proofing Portal (/proof/[id]) và xuất file nén JSZip trực tiếp phía client.")
+                      "Chạy tại cổng http://localhost:3005 (tránh xung đột cổng 3000). Chứa bộ xử lý đồ họa Canvas 2D Engine, pipeline xử lý màu tuyến tính Float32 (Linear Color sRGB), thanh dock đáy nổi (Floating Bottom Canvas Dock) responsive cho cả màn hình nhỏ và lớn, quản lý lớp vẽ Layer Stack, điều hướng phím tắt, bộ thu nhận clipboard Ctrl+V, cổng duyệt khách hàng Proofing Portal (/proof/[id]) và xuất file nén JSZip trực tiếp phía client.")
     
     add_bullet_styled(doc, "Backend KROMA Core API v1 (FastAPI / Hexagonal Architecture / SQLite WAL)", 
-                      "Chạy tại http://127.0.0.1:8000 (/health, /docs). Kiến trúc phân tầng rõ rệt: Tầng Domain (Domain Models, Business Rules, Enums độc lập không phụ thuộc framework), Tầng Service (AssetService, PresetService, ProjectService, BatchWorker, ProofingService), Tầng Storage Adapters (SqliteProjectRepository, LocalFileSystemStorage, Ports, Stubs cho Postgres và S3).")
+                      "Chạy tại http://127.0.0.1:8000 (/health, /docs). Kiến trúc phân tầng rõ rệt: Tầng Domain (Domain Models, Business Rules, Enums độc lập không phụ thuộc framework), Tầng Service (AssetService, PresetService, ProjectService, BatchWorkerService, ProofingService), Tầng Storage Adapters (SqliteProjectRepository, LocalFileSystemStorage, Ports, Stubs cho Postgres và S3).")
 
     add_bullet_styled(doc, "Các Endpoint API v1 Chuẩn Hóa", 
-                      "Bao gồm: /api/v1/projects (vòng đời dự án), /api/v1/assets (tải lên ảnh, danh sách tài sản, lưu transform state, xóa tài sản), /api/v1/presets (tạo mới, đọc, lọc, xóa preset tùy biến), /api/v1/batches (tạo job xuất lô, kiểm tra tiến độ, tải file ZIP kết quả), /api/v1/proofing (tạo link, gửi nhận feedback và phê duyệt), /api/v1/health (kiểm tra trạng thái và chế độ local-first-sqlite).")
+                      "Bao gồm: /api/v1/projects (vòng đời dự án), /api/v1/assets (tải lên ảnh, danh sách tài sản, lưu transform state, xóa tài sản), /api/v1/presets (tạo mới, đọc, lọc, xóa preset tùy biến), /api/v1/batches (tạo job xuất lô, kiểm tra tiến độ, tải file ZIP kết quả), /api/v1/proofing (tạo link, gửi nhận feedback và phê duyệt an toàn), /api/v1/health (kiểm tra trạng thái và chế độ local-first-sqlite).")
 
     doc.save(doc_path)
     print("Updated 02_KIEN_TRUC_HE_THONG_VA_CAU_TRUC_MA_NGUON.docx successfully.")
@@ -106,13 +106,13 @@ def sync_doc_04():
     add_paragraph_styled(doc, "Cấu trúc cơ sở dữ liệu và hợp đồng giao tiếp API v1 được định nghĩa chặt chẽ với Pydantic v2 và SQLite Write-Ahead Logging:")
     
     add_bullet_styled(doc, "Bảng Dữ Liệu Batch Jobs & Items (SQLite Tables: batch_jobs, batch_items)", 
-                      "Lưu trữ id, project_id, status (queued, processing, completed, failed), total_items, processed_items, zip_path, error_summary, created_at, finished_at.")
+                      "Lưu trữ id, project_id, status (queued, processing, completed, failed, cancelled), total_items, processed_items, zip_path, error_summary, created_at, finished_at.")
     
     add_bullet_styled(doc, "Bảng Dữ Liệu Proofing Sessions (SQLite Table: proofing_sessions)", 
-                      "Lưu trữ id, project_id, title, client_name, status (pending, approved, changes_requested), allow_comments, feedback_json, created_at, updated_at.")
+                      "Lưu trữ id, project_id, title, client_name, status (pending, in_review, approved, changes_requested), allow_comments, revoked_at, feedback_json, created_at, updated_at.")
 
-    add_bullet_styled(doc, "Hợp Đồng API Batch & Proofing (/api/v1/batches, /api/v1/proofing)", 
-                      "POST /api/v1/batches/export: nhận danh sách asset_ids và cấu hình recipes, sinh batch job; GET /api/v1/batches/{id}: theo dõi tiến độ thời gian thực; POST /api/v1/proofing/{id}/feedback: nhận phản hồi từ khách hàng.")
+    add_bullet_styled(doc, "Bảo Vệ Tính Toàn Vẹn & Mã Hóa Kiểm Định (Cryptographic Verification & Integrity)", 
+                      "Tất cả các tệp xuất theo lô đều có bảng kê manifest JSON chứa mã băm SHA256 từng file ảnh, kích thước pixel (width, height), và nhãn sàn thương mại điện tử nhằm phục vụ kiểm định hải quan số và kiểm toán kho ảnh.")
 
     doc.save(doc_path)
     print("Updated 04_THIET_KE_DU_LIEU_API_VA_AI.docx successfully.")
@@ -121,12 +121,12 @@ def sync_doc_05():
     doc_path = "D:/Dự Án/XLAS/01_HO_SO_THIET_KE_HE_THONG/05_KE_HOACH_TRIEN_KHAI_KIEM_THU_VAN_HANH.docx"
     doc = docx.Document(doc_path)
     
-    add_heading_styled(doc, "BÁO CÁO NGHIỆM THU KIỂM THỬ: 47/47 BACKEND TESTS & BỘ KIỂM THỬ E2E 4 TẦNG", level=2)
+    add_heading_styled(doc, "BÁO CÁO NGHIỆM THU KIỂM THỬ: 51/51 BACKEND TESTS & BỘ KIỂM THỬ E2E 4 TẦNG", level=2)
     
     add_paragraph_styled(doc, "Hệ thống kiểm thử tự động toàn diện được thiết lập và vận hành đạt kết quả 100%:")
     
     add_bullet_styled(doc, "Kiểm Thử Đơn Vị & Tích Hợp Backend (pytest)", 
-                      "47/47 bài test vượt qua (100% Pass rate) bao gồm: test_domain_purity (tính thuần khiết của logic nghiệp vụ không phụ thuộc I/O), test_assets_api, test_presets_api, test_projects_api, test_batches (kiểm định batch worker và giới hạn hạn mức), test_proofing (vòng đời phê duyệt), test_export_real (kết xuất tệp ZIP nhị phân thực tế), test_security (lọc mã độc, path traversal, injection), và test_storage_sqlite_fs.")
+                      "51/51 bài test vượt qua (100% Pass rate) bao gồm: test_domain_purity (tính thuần khiết của logic nghiệp vụ không phụ thuộc I/O), test_assets_api, test_presets_api, test_projects_api, test_batches (kiểm định batch worker, xử lý hủy job và quản lý token), test_proofing (vòng đời phê duyệt, bảo vệ chống xung đột race condition TOCTOU), test_export_real (kết xuất tệp ZIP nhị phân và kiểm tra SHA256 thực tế), test_security (lọc mã độc, path traversal, injection), và test_storage_sqlite_fs.")
     
     add_bullet_styled(doc, "Khung Kiểm Thử Hộp Đen E2E Đa Tầng (Playwright Test Framework)", 
                       "Đã triển khai hệ thống kịch bản kiểm thử E2E phân theo 4 Tầng: Tier 1 (F01-F10 Functional Specs), Tier 2 (Boundary Value Analysis cho Backend và Frontend), Tier 3 (Pairwise Combinations giữa các sàn và định dạng ảnh), Tier 4 (Real-world merchant workflows từ nạp ảnh đến xuất ZIP).")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import threading
@@ -108,6 +109,9 @@ def test_batch_worker_renders_real_images_manifest_and_zip(
         assert manifest["job_id"] == job_id
         assert manifest["completed_items"] == 3
         assert len(manifest["items"]) == 3
+        assert len(names) == len(manifest["items"]) + 1
+        for item in manifest["items"]:
+            assert item["sha256"] == hashlib.sha256(zf.read(item["output_filename"])).hexdigest()
 
         by_preset = {item["preset_id"]: item for item in manifest["items"]}
         with Image.open(io.BytesIO(zf.read(by_preset["shopee_1_1"]["output_filename"]))) as im:
@@ -515,4 +519,288 @@ def test_batch_all_failed_and_startup_recovery(
         cancelled = _poll_batch_until_done(c2, canc_job_id)
         assert cancelled["status"] == "cancelled"
         assert interrupted_job.id
+
+
+def test_batch_cancel_after_partial_completion_and_lost_staging_retry(
+    client: TestClient, test_settings: Settings, monkeypatch
+) -> None:
+    proj = client.post("/v1/projects", json={"name": "Cancel & Lost Staging Retry"}).json()
+    pid = proj["id"]
+    a1 = client.post(
+        f"/v1/projects/{pid}/assets",
+        files={"file": ("p1.png", _make_png(90, 90, (200, 40, 40, 255)), "image/png")},
+    ).json()
+    a2 = client.post(
+        f"/v1/projects/{pid}/assets",
+        files={"file": ("p2.png", _make_png(90, 90, (40, 200, 40, 255)), "image/png")},
+    ).json()
+    a3 = client.post(
+        f"/v1/projects/{pid}/assets",
+        files={"file": ("p3.png", _make_png(90, 90, (40, 40, 200, 255)), "image/png")},
+    ).json()
+
+    worker = client.app.state.container.batch_worker
+    item2_started = threading.Event()
+    allow_item2_finish = threading.Event()
+    orig_render = worker._render_item
+
+    def _gate_item2(item):
+        if item.seq == 2 and not allow_item2_finish.is_set():
+            item2_started.set()
+            allow_item2_finish.wait(timeout=5.0)
+        return orig_render(item)
+
+    monkeypatch.setattr(worker, "_render_item", _gate_item2)
+
+    sub = client.post(
+        "/v1/batches",
+        json={
+            "project_id": pid,
+            "asset_ids": [a1["id"], a2["id"], a3["id"]],
+            "recipes": [{"preset_id": "shopee_1_1", "format": "png"}],
+        },
+    )
+    assert sub.status_code == 202
+    job_id = sub.json()["job_id"]
+    assert item2_started.wait(timeout=5.0)
+
+    cancel_res = client.post(f"/v1/batches/{job_id}/cancel")
+    assert cancel_res.status_code == 200
+    allow_item2_finish.set()
+
+    cancelled = _poll_batch_until_done(client, job_id)
+    assert cancelled["status"] == "cancelled"
+    assert cancelled["completed_items"] == 1
+    assert not (test_settings.exports_dir / ".staging" / job_id).exists()
+
+    # Retry after cancel -> must re-render item 1 (staging was deleted) and items 2 & 3
+    retry_res = client.post(f"/v1/batches/{job_id}/retry")
+    assert retry_res.status_code == 202
+    retried = _poll_batch_until_done(client, job_id)
+    assert retried["status"] == "completed"
+    assert retried["completed_items"] == 3
+
+    dl = client.get(retried["download_url"])
+    assert dl.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(dl.content), "r") as zf:
+        manifest = json.loads(zf.read("manifest.json"))
+        assert len(manifest["items"]) == 3
+        assert len(zf.namelist()) == len(manifest["items"]) + 1
+        for entry in manifest["items"]:
+            fn = entry["output_filename"]
+            assert fn in zf.namelist()
+            assert entry["sha256"] == hashlib.sha256(zf.read(fn)).hexdigest()
+
+    # Staging & in-memory dicts are cleaned up after COMPLETED
+    assert not (test_settings.exports_dir / ".staging" / job_id).exists()
+    assert job_id not in worker._cancel_events
+    assert job_id not in worker._futures
+
+    # Lost-staging retry on PARTIAL_FAILED
+    repo = client.app.state.container.repo
+    a2_domain = repo.get_asset(a2["id"])
+    assert a2_domain is not None
+    blob_path = test_settings.local_storage_dir / a2_domain.storage_key
+    raw_a2 = blob_path.read_bytes()
+    blob_path.chmod(0o644)
+    blob_path.unlink()
+
+    partial_sub = client.post(
+        "/v1/batches",
+        json={
+            "project_id": pid,
+            "asset_ids": [a1["id"], a2["id"]],
+            "recipes": [{"preset_id": "shopee_1_1", "format": "png"}],
+        },
+    )
+    assert partial_sub.status_code == 202
+    partial_id = partial_sub.json()["job_id"]
+    partial_done = _poll_batch_until_done(client, partial_id)
+    assert partial_done["status"] == "partial_failed"
+
+    # Simulate external loss of .staging/{partial_id} before retrying
+    import shutil
+    shutil.rmtree(test_settings.exports_dir / ".staging" / partial_id, ignore_errors=True)
+    blob_path.parent.mkdir(parents=True, exist_ok=True)
+    blob_path.write_bytes(raw_a2)
+
+    retry_lost = client.post(f"/v1/batches/{partial_id}/retry")
+    assert retry_lost.status_code == 202
+    lost_done = _poll_batch_until_done(client, partial_id)
+    assert lost_done["status"] == "completed"
+    assert lost_done["completed_items"] == 2
+
+    dl_lost = client.get(lost_done["download_url"])
+    assert dl_lost.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(dl_lost.content), "r") as zf:
+        manifest2 = json.loads(zf.read("manifest.json"))
+        assert len(manifest2["items"]) == 2
+        assert len(zf.namelist()) == len(manifest2["items"]) + 1
+        for entry in manifest2["items"]:
+            fn = entry["output_filename"]
+            assert fn in zf.namelist()
+            assert entry["sha256"] == hashlib.sha256(zf.read(fn)).hexdigest()
+
+
+def test_batch_last_item_cancel_never_wedges_job(
+    client: TestClient, test_settings: Settings, monkeypatch
+) -> None:
+    proj = client.post("/v1/projects", json={"name": "Last Item Cancel"}).json()
+    pid = proj["id"]
+    a1 = client.post(
+        f"/v1/projects/{pid}/assets",
+        files={"file": ("l1.png", _make_png(80, 80), "image/png")},
+    ).json()
+    a2 = client.post(
+        f"/v1/projects/{pid}/assets",
+        files={"file": ("l2.png", _make_png(80, 80, (10, 180, 90, 255)), "image/png")},
+    ).json()
+
+    worker = client.app.state.container.batch_worker
+    item2_started = threading.Event()
+    allow_item2_finish = threading.Event()
+    orig_render = worker._render_item
+
+    def _gate_last_item(item):
+        if item.seq == 2 and not allow_item2_finish.is_set():
+            item2_started.set()
+            allow_item2_finish.wait(timeout=5.0)
+        return orig_render(item)
+
+    monkeypatch.setattr(worker, "_render_item", _gate_last_item)
+
+    sub = client.post(
+        "/v1/batches",
+        json={
+            "project_id": pid,
+            "asset_ids": [a1["id"], a2["id"]],
+            "recipes": [{"preset_id": "shopee_1_1", "format": "png"}],
+        },
+    )
+    assert sub.status_code == 202
+    job_id = sub.json()["job_id"]
+    assert item2_started.wait(timeout=5.0)
+
+    cancel_res = client.post(f"/v1/batches/{job_id}/cancel")
+    assert cancel_res.status_code == 200
+    allow_item2_finish.set()
+
+    done = _poll_batch_until_done(client, job_id)
+    # Item 2 was cancelled mid-render -> retryable -> must never wedge (409 on both download & retry)
+    assert done["status"] == "cancelled"
+    assert done["items"][1]["status"] == "cancelled"
+
+    retry_res = client.post(f"/v1/batches/{job_id}/retry")
+    assert retry_res.status_code == 202
+    completed = _poll_batch_until_done(client, job_id)
+    assert completed["status"] == "completed"
+    assert completed["completed_items"] == 2
+    dl = client.get(completed["download_url"])
+    assert dl.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(dl.content), "r") as zf:
+        manifest = json.loads(zf.read("manifest.json"))
+        assert len(zf.namelist()) == len(manifest["items"]) + 1
+
+    # Also verify post-commit cancel race (all items already COMPLETED when cancel arrives)
+    sub2 = client.post(
+        "/v1/batches",
+        json={
+            "project_id": pid,
+            "asset_ids": [a1["id"]],
+            "recipes": [{"preset_id": "shopee_1_1", "format": "png"}],
+        },
+    )
+    assert sub2.status_code == 202
+    job2_id = sub2.json()["job_id"]
+    done2 = _poll_batch_until_done(client, job2_id)
+    assert done2["status"] == "completed"
+
+    # Simulate _is_cancelled returning True only at post-item check after last item committed
+    orig_is_cancelled = worker._is_cancelled
+    calls = {"n": 0}
+
+    def _late_cancel(jid: str) -> bool:
+        if jid not in (job_id, job2_id):
+            calls["n"] += 1
+            # 1: pre-claim, 2: pre-item-1, 3: post-render (before commit),
+            # 4: post-item-1 (after item 1 committed COMPLETED)
+            return calls["n"] >= 4
+        return orig_is_cancelled(jid)
+
+    monkeypatch.setattr(worker, "_is_cancelled", _late_cancel)
+    sub3 = client.post(
+        "/v1/batches",
+        json={
+            "project_id": pid,
+            "asset_ids": [a1["id"]],
+            "recipes": [{"preset_id": "shopee_1_1", "format": "png"}],
+        },
+    )
+    assert sub3.status_code == 202
+    job3_id = sub3.json()["job_id"]
+    done3 = _poll_batch_until_done(client, job3_id)
+    assert done3["status"] == "completed"
+    assert client.get(done3["download_url"]).status_code == 200
+
+
+def test_batch_missing_staged_file_during_zip_fails_loudly_and_claim_race(
+    client: TestClient, test_settings: Settings, monkeypatch
+) -> None:
+    import pytest
+
+    proj = client.post("/v1/projects", json={"name": "Missing Staging Fail"}).json()
+    pid = proj["id"]
+    a1 = client.post(
+        f"/v1/projects/{pid}/assets",
+        files={"file": ("m1.png", _make_png(64, 64), "image/png")},
+    ).json()
+
+    worker = client.app.state.container.batch_worker
+    monkeypatch.setattr(worker, "_enqueue_job", lambda _jid: None)
+    from app.core.ids import utc_now_iso
+    from app.domain.models import BatchRecipeInput
+
+    job, _items = worker.submit_batch_job(
+        project_id=pid,
+        asset_ids=[a1["id"]],
+        recipes=[BatchRecipeInput(preset_id="shopee_1_1", format="png")],
+    )
+    # Remove staged file immediately after update_batch_job_item commits COMPLETED
+    repo = client.app.state.container.repo
+    orig_update = repo.update_batch_job_item
+
+    def _delete_staged_after_complete(item):
+        out = orig_update(item)
+        if item.job_id == job.id and item.status.value == "completed" and item.output_filename:
+            staged = test_settings.exports_dir / ".staging" / job.id / item.output_filename
+            if staged.exists():
+                staged.unlink()
+        return out
+
+    monkeypatch.setattr(repo, "update_batch_job_item", _delete_staged_after_complete)
+
+    with pytest.raises(RuntimeError, match="missing staged"):
+        worker._run_job(job.id)
+
+    after = client.get(f"/v1/batches/{job.id}").json()
+    assert after["status"] == "failed"
+    assert after["download_url"] is None
+    assert after["items"][0]["status"] == "failed"
+    assert after["items"][0]["error_code"] == "STAGING_MISSING"
+    assert not (test_settings.exports_dir / f"{job.id}.zip").exists()
+    assert not (test_settings.exports_dir / ".staging" / job.id).exists()
+    assert job.id not in worker._cancel_events
+    assert job.id not in worker._futures
+
+    # Also verify claim_batch_job_running returns None if job already cancelled while queued
+    job_canc, _ = worker.submit_batch_job(
+        project_id=pid,
+        asset_ids=[a1["id"]],
+        recipes=[BatchRecipeInput(preset_id="shopee_1_1", format="png")],
+    )
+    worker.cancel_batch_job(job_canc.id)
+    assert repo.claim_batch_job_running(job_canc.id, utc_now_iso()) is None
+    assert client.get(f"/v1/batches/{job_canc.id}").json()["status"] == "cancelled"
+
+
 
